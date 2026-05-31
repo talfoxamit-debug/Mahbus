@@ -21,19 +21,19 @@
       repeating-linear-gradient(45deg,  rgba(201,164,60,0.05) 0 2px, transparent 2px 24px),
       repeating-linear-gradient(-45deg, rgba(201,164,60,0.05) 0 2px, transparent 2px 24px);
   }
-  h1{margin:.3em 0 .05em; font-size:2.5rem; letter-spacing:1px; color:#e9c46a;
+  h1{margin:.3em 0 .05em; font-size:3.4rem; letter-spacing:1px; color:#e9c46a;
      text-shadow:0 2px 4px rgba(0,0,0,.4);}
-  .title-name{color:#e9c46a; font-size:1.45rem; font-weight:bold; margin:.1em 0;}
-  .title-name .fa{font-size:1.1rem; opacity:.9; font-weight:normal;}
-  .flourish{color:#c9a43c; font-size:1.2rem; letter-spacing:.5em; margin:.1em 0 .3em;}
+  .title-name{color:#e9c46a; font-size:2.1rem; font-weight:bold; margin:.15em 0;}
+  .title-name .fa{font-size:1.5rem; opacity:.9; font-weight:normal;}
+  .flourish{color:#c9a43c; font-size:1.7rem; letter-spacing:.5em; margin:.1em 0 .3em;}
   /* gold plaque shown above the board on the playing screen */
   #gametitle{
-    margin:4px auto 8px; padding:8px 18px; display:inline-block; border-radius:12px;
-    color:#e9c46a; font-size:1.3rem; font-weight:bold;
+    margin:4px auto 8px; padding:10px 22px; display:inline-block; border-radius:12px;
+    color:#e9c46a; font-size:1.9rem; font-weight:bold;
     border:1px solid rgba(201,164,60,.55); background:rgba(201,164,60,.08);
     box-shadow:0 0 0 3px rgba(201,164,60,.18);
   }
-  #gametitle .fa{font-size:1rem; opacity:.9; font-weight:normal;}
+  #gametitle .fa{font-size:1.4rem; opacity:.9; font-weight:normal;}
   /* win celebration card */
   #wincard{
     position:fixed; left:50%; top:42%; transform:translate(-50%,-50%) scale(.9);
@@ -43,50 +43,51 @@
     opacity:0; pointer-events:none; transition:opacity .4s, transform .4s;
   }
   #wincard.show{opacity:1; transform:translate(-50%,-50%) scale(1); pointer-events:auto;}
-  #wincard #wintext{font-size:2rem; font-weight:bold; margin-bottom:10px;}
-  #wincard .ded-he{font-size:1.15rem; line-height:1.7;}
-  #wincard .ded-fa{font-size:1.1rem; opacity:.95; line-height:1.7;}
-  #wincard .tap{font-size:.85rem; opacity:.6; margin-top:12px;}
-  .sub{color:#cdbf9f; margin:0 0 .6em; font-size:1.05rem;}
+  #wincard #wintext{font-size:2.8rem; font-weight:bold; margin-bottom:12px;}
+  #wincard .ded-he{font-size:1.6rem; line-height:1.7;}
+  #wincard .ded-fa{font-size:1.45rem; opacity:.95; line-height:1.7;}
+  #wincard .tap{font-size:1.1rem; opacity:.6; margin-top:14px;}
   .dedication{
-    margin:16px auto; padding:14px 20px; max-width:540px; border-radius:14px;
+    margin:18px auto; padding:18px 24px; max-width:640px; border-radius:16px;
     border:1px solid rgba(201,164,60,.55); background:rgba(201,164,60,.08);
     box-shadow:0 0 0 4px var(--panel), 0 0 0 6px rgba(201,164,60,.35);
-    color:#e9c46a; line-height:1.8;
+    color:#e9c46a; line-height:1.9;
   }
-  .dedication .ded-he{font-size:1.2rem;}
-  .dedication .ded-fa{font-size:1.15rem; opacity:.95;}
-  .dedication .ded-orn{color:#c9a43c; letter-spacing:.4em; font-size:.95rem;}
+  .dedication .ded-he{font-size:1.7rem;}
+  .dedication .ded-fa{font-size:1.5rem; opacity:.95;}
+  .dedication .ded-orn{color:#c9a43c; letter-spacing:.4em; font-size:1.2rem;}
   .ded-foot{
-    margin:14px auto 0; color:#c9a43c; font-size:.95rem; line-height:1.6; opacity:.9;
+    margin:16px auto 0; color:#c9a43c; font-size:1.2rem; line-height:1.7; opacity:.9;
   }
-  #game{display:none; max-width:1000px; margin:0 auto; padding:8px 12px 24px;}
-  #menu{max-width:680px; margin:6vh auto 0; padding:0 16px;}
-  .rules{
-    background:var(--panel); border:2px solid #c9a43c; border-radius:14px;
-    padding:18px 22px; text-align:right; font-size:1.08rem; line-height:1.5;
-    margin:18px auto; box-shadow:0 0 0 4px var(--panel), 0 0 0 6px rgba(201,164,60,.4);
+  #game{display:none; max-width:1500px; margin:0 auto; padding:8px 12px 24px;}
+  #menu{max-width:820px; margin:5vh auto 0; padding:0 16px;}
+  .howto{
+    background:var(--panel); border:2px solid #c9a43c; border-radius:16px;
+    padding:22px 26px; text-align:right; font-size:1.6rem; line-height:1.9;
+    margin:20px auto; max-width:680px;
+    box-shadow:0 0 0 4px var(--panel), 0 0 0 6px rgba(201,164,60,.4);
   }
-  .rules b{color:var(--accent);}
+  .howto b{color:var(--accent);}
+  .howto p{margin:.35em 0;}
   .bigbtn{
-    font-family:inherit; font-size:1.35rem; font-weight:bold; color:#1f2a33;
-    background:var(--accent); border:none; border-radius:12px;
-    padding:18px 28px; margin:10px; cursor:pointer; min-width:240px;
-    box-shadow:0 4px 0 #a9781f; transition:transform .05s;
+    font-family:inherit; font-size:1.85rem; font-weight:bold; color:#1f2a33;
+    background:var(--accent); border:none; border-radius:14px;
+    padding:24px 38px; margin:12px; cursor:pointer; min-width:300px;
+    box-shadow:0 5px 0 #a9781f; transition:transform .05s;
   }
   .bigbtn:hover{transform:translateY(-2px);}
   .bigbtn:active{transform:translateY(2px); box-shadow:0 2px 0 #a9781f;}
-  .bigbtn.alt{background:#5d7488; color:#fff; box-shadow:0 4px 0 #3c4d5c;}
-  .level-label{font-size:1.25rem; margin-top:10px; color:#cdbf9f;}
-  .level-row{display:flex; gap:10px; justify-content:center; flex-wrap:wrap;}
-  .bigbtn.lvl{min-width:150px; font-size:1.25rem; padding:16px 18px;}
-  .hint{font-size:.85rem; opacity:.8; font-weight:normal;}
+  .bigbtn.alt{background:#5d7488; color:#fff; box-shadow:0 5px 0 #3c4d5c;}
+  .level-label{font-size:1.7rem; margin-top:14px; color:#e9c46a; font-weight:bold;}
+  .level-row{display:flex; gap:14px; justify-content:center; flex-wrap:wrap;}
+  .bigbtn.lvl{min-width:200px; font-size:1.7rem; padding:22px 24px;}
+  .hint{font-size:1.1rem; opacity:.8; font-weight:normal;}
   canvas{
     background:#000; border-radius:10px; width:100%; height:auto;
-    max-width:960px; touch-action:manipulation; display:block; margin:0 auto;
+    max-width:1400px; touch-action:manipulation; display:block; margin:0 auto;
   }
   #banner{
-    font-size:2.1rem; font-weight:bold; padding:14px 10px; min-height:1.5em;
+    font-size:2.9rem; font-weight:bold; padding:16px 10px; min-height:1.4em;
   }
   #controls{
     display:flex; flex-wrap:wrap; gap:14px; justify-content:center;
@@ -94,18 +95,18 @@
   }
   /* the one big primary action */
   #btnRoll{
-    font-family:inherit; font-size:1.9rem; font-weight:bold; color:#fff;
-    background:var(--good); border:none; border-radius:14px; cursor:pointer;
-    padding:20px 46px; box-shadow:0 5px 0 #2c7d40; flex-basis:100%;
-    max-width:520px;
+    font-family:inherit; font-size:2.5rem; font-weight:bold; color:#fff;
+    background:var(--good); border:none; border-radius:16px; cursor:pointer;
+    padding:26px 54px; box-shadow:0 6px 0 #2c7d40; flex-basis:100%;
+    max-width:680px;
   }
   #btnRoll:active{transform:translateY(2px); box-shadow:0 2px 0 #2c7d40;}
   #btnRoll:disabled{opacity:.35; cursor:default;}
-  /* secondary, smaller buttons */
+  /* secondary buttons */
   .ctrl{
-    font-family:inherit; font-size:1.15rem; font-weight:bold;
-    border:none; border-radius:10px; padding:12px 22px; cursor:pointer;
-    color:#1f2a33; background:#cdbf9f; box-shadow:0 3px 0 #8d8266;
+    font-family:inherit; font-size:1.55rem; font-weight:bold;
+    border:none; border-radius:12px; padding:16px 30px; cursor:pointer;
+    color:#1f2a33; background:#cdbf9f; box-shadow:0 4px 0 #8d8266;
   }
   .ctrl:active{transform:translateY(2px); box-shadow:0 1px 0 #8d8266;}
   .ctrl:disabled{opacity:.35; cursor:default; box-shadow:0 3px 0 #8d8266;}
@@ -138,23 +139,17 @@
   <h1>מַחְבּוּס</h1>
   <div class="title-name">המשחק של סבא בוריס <span class="fa">· بازیِ بابابزرگ بوریس</span></div>
   <div class="flourish">✦ ❖ ✦ ❖ ✦</div>
-  <p class="sub">משחק מזרח-תיכוני קלאסי &mdash; "האסיר", בן דודו של השש-בש.</p>
   <div class="dedication">
     <div class="ded-orn">✦ ❖ ✦</div>
     <div class="ded-he">מוקדש באהבה לסבא בוריס היקר — מטל ♥</div>
     <div class="ded-fa">تقدیم با عشق به بابابزرگ عزیزم بوریس — تال</div>
   </div>
-  <div class="rules">
-    <p><b>הרעיון.</b> שני השחקנים מתחילים עם כל 15 החיילים בערימה בפינות הרחוקות
-    הנגדיות, מובילים אותם הביתה בכיוונים הפוכים, ואז מוציאים אותם מהלוח.
-    הראשון שמוציא את כל 15 החיילים — מנצח.</p>
-    <p><b>הטוויסט (מחבוס = "אסיר").</b> אין "בר". אם נוחתים עם חייל על חייל אויב
-    <b>בודד</b>, יושבים מעליו ו<b>לוכדים</b> אותו. חייל לכוד קפוא ואינו יכול לזוז
-    עד שמורידים את החייל/ים שמעליו. נקודה שמוחזקת ב-2 חיילי אויב או יותר — חסומה,
-    ואי אפשר לנחות עליה.</p>
-    <p><b>בתורך.</b> הטל את הקוביות (או הקש על מקש <b>רווח</b>) והזז חייל אחד לכל
-    קובייה (דאבּל נותן ארבעה מהלכים). לחץ על חייל כדי לראות את המהלכים החוקיים
-    מודגשים, ואז לחץ לאן ללכת.</p>
+  <div class="howto">
+    <p><b>איך מפעילים:</b></p>
+    <p>① לוחצים על הכפתור הירוק הגדול <b>🎲 הטל את הקוביות</b> (או על מקש הרווח).</p>
+    <p>② לוחצים על חייל — המקומות יידלקו בירוק. לוחצים על המקום שאליו רוצים לזוז.</p>
+    <p>③ טעות? לוחצים על <b>↩ בטל מהלך</b>.</p>
+    <p>④ הכפתור <b>🔊</b> מדליק ומכבה את הצלילים.</p>
   </div>
   <div class="level-label">משחק נגד המחשב — בחר רמת קושי:</div>
   <div class="level-row">
