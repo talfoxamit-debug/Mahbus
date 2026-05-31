@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mahbus &mdash; محبوس</title>
+<title>מחבוס</title>
 <style>
   :root{
     --bg:#1f2a33; --panel:#27343f; --ink:#f4ead2; --accent:#e0a52e;
@@ -81,21 +81,21 @@
 
 <!-- ===================== START MENU ===================== -->
 <div id="menu">
-  <h1>Mahbus &nbsp;·&nbsp; <span style="font-family:serif">محبوس</span></h1>
-  <p class="sub">The classic Middle-Eastern game of "the imprisoned" &mdash; a cousin of backgammon.</p>
+  <h1>מַחְבּוּס</h1>
+  <p class="sub">משחק מזרח-תיכוני קלאסי &mdash; "האסיר", בן דודו של השש-בש.</p>
   <div class="rules">
-    <p><b>The idea.</b> Both players start with all 15 pieces stacked in opposite far
-    corners and race them home in opposite directions, then bear them off the board.
-    First to bear off all 15 wins.</p>
-    <p><b>The twist (mahbus = "imprisoned").</b> There is no bar. If you land a piece
-    on a single enemy piece, you sit on top and <b>trap</b> it. A trapped piece is frozen
-    and cannot move until you lift your piece(s) off it. A point held by 2 or more enemy
-    pieces is blocked &mdash; you cannot land there.</p>
-    <p><b>On your turn.</b> Roll the dice and move one piece per die (doubles give you
-    four moves). Click a piece to see its legal moves highlighted, then click where to go.</p>
+    <p><b>הרעיון.</b> שני השחקנים מתחילים עם כל 15 החיילים בערימה בפינות הרחוקות
+    הנגדיות, מובילים אותם הביתה בכיוונים הפוכים, ואז מוציאים אותם מהלוח.
+    הראשון שמוציא את כל 15 החיילים — מנצח.</p>
+    <p><b>הטוויסט (מחבוס = "אסיר").</b> אין "בר". אם נוחתים עם חייל על חייל אויב
+    <b>בודד</b>, יושבים מעליו ו<b>לוכדים</b> אותו. חייל לכוד קפוא ואינו יכול לזוז
+    עד שמורידים את החייל/ים שמעליו. נקודה שמוחזקת ב-2 חיילי אויב או יותר — חסומה,
+    ואי אפשר לנחות עליה.</p>
+    <p><b>בתורך.</b> הטל את הקוביות והזז חייל אחד לכל קובייה (דאבּל נותן ארבעה
+    מהלכים). לחץ על חייל כדי לראות את המהלכים החוקיים מודגשים, ואז לחץ לאן ללכת.</p>
   </div>
-  <button class="bigbtn" onclick="startGame('ai')">Play vs Computer</button>
-  <button class="bigbtn alt" onclick="startGame('hotseat')">Two Players</button>
+  <button class="bigbtn" onclick="startGame('ai')">משחק נגד המחשב</button>
+  <button class="bigbtn alt" onclick="startGame('hotseat')">שני שחקנים</button>
 </div>
 
 <!-- ===================== GAME ===================== -->
@@ -103,10 +103,10 @@
   <div id="banner">&nbsp;</div>
   <canvas id="board" width="960" height="620"></canvas>
   <div id="controls">
-    <button id="btnRoll" onclick="onRoll()">🎲 Roll the Dice</button>
-    <button id="btnUndo" class="ctrl" onclick="onUndo()">↩ Undo</button>
-    <button id="btnNew"  class="ctrl" onclick="startGame(STATE.mode)">New Game</button>
-    <button id="btnMenu" class="ctrl" onclick="toMenu()">Menu</button>
+    <button id="btnRoll" onclick="onRoll()">🎲 הטל את הקוביות</button>
+    <button id="btnUndo" class="ctrl" onclick="onUndo()">↩ בטל מהלך</button>
+    <button id="btnNew"  class="ctrl" onclick="startGame(STATE.mode)">משחק חדש</button>
+    <button id="btnMenu" class="ctrl" onclick="toMenu()">תפריט</button>
   </div>
 </div>
 
@@ -276,7 +276,7 @@ function onRoll(){
   STATE.phase = 'move';
   HISTORY = [];
   if (legalMoves(STATE, STATE.current).length === 0){
-    toast('No legal moves — turn passes.');
+    toast('אין מהלכים חוקיים — התור עובר.');
     draw(); updateUI();
     setTimeout(endTurn, 1100);
     return;
@@ -300,7 +300,7 @@ function humanMove(m){
   draw(); updateUI();
   if (STATE.phase === 'over'){ announceWin(); return; }
   if (legalMoves(STATE, STATE.current).length === 0){
-    if (unusedValues(STATE).length > 0) toast('No more moves possible.');
+    if (unusedValues(STATE).length > 0) toast('אין עוד מהלכים אפשריים.');
     setTimeout(endTurn, 700);
   }
 }
@@ -326,8 +326,8 @@ function endTurn(){
 
 function announceWin(){
   draw(); updateUI();
-  const who = STATE.winner === HUMAN && STATE.mode === 'ai' ? 'You win! 🎉'
-            : (STATE.winner === 'W' ? 'White wins! 🎉' : 'Black wins! 🎉');
+  const who = STATE.winner === HUMAN && STATE.mode === 'ai' ? 'ניצחת! 🎉'
+            : (STATE.winner === 'W' ? 'הלבן ניצח! 🎉' : 'השחור ניצח! 🎉');
   toast(who, 4000);
 }
 
@@ -402,7 +402,7 @@ function aiTurn(){
 
   const seq = aiBestSequence(STATE);
   if (seq.length === 0){
-    toast('Computer has no move.');
+    toast('אין למחשב מהלך.');
     setTimeout(() => { AI_BUSY = false; endTurn(); }, 1100);
     return;
   }
@@ -677,16 +677,16 @@ cv.addEventListener('click', e => {
 function updateUI(){
   if (!STATE) return;
   const banner = document.getElementById('banner');
-  const name = STATE.current === 'W' ? 'White' : 'Black';
+  const name = STATE.current === 'W' ? 'הלבן' : 'השחור';
   if (STATE.phase === 'over'){
-    const w = STATE.winner === 'W' ? 'White' : 'Black';
-    banner.textContent = (STATE.mode === 'ai' && STATE.winner === HUMAN) ? '🎉 You win!' : `🎉 ${w} wins!`;
+    const w = STATE.winner === 'W' ? 'הלבן' : 'השחור';
+    banner.textContent = (STATE.mode === 'ai' && STATE.winner === HUMAN) ? '🎉 ניצחת!' : `🎉 ${w} ניצח!`;
   } else if (STATE.mode === 'ai' && STATE.current === AI){
-    banner.textContent = '🤖 Computer is thinking…';
+    banner.textContent = '🤖 המחשב חושב…';
   } else if (STATE.phase === 'await'){
-    banner.textContent = `${name} — roll the dice`;
+    banner.textContent = `תור ${name} — הטל את הקוביות`;
   } else {
-    banner.textContent = `${name} — your move`;
+    banner.textContent = `תור ${name} — בצע מהלך`;
   }
   banner.style.color = STATE.current === 'W' ? '#f4ead2' : '#cdcdcd';
 
