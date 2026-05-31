@@ -151,7 +151,7 @@
   @media (pointer:coarse){
     html,body{ position:fixed; width:100%; height:100%; touch-action:none; }
     #gametitle, #banner, #controls, .ded-foot{ display:none !important; }
-    #game{ padding:0; gap:0; justify-content:center; }
+    #game{ padding:env(safe-area-inset-top,10px) env(safe-area-inset-right,10px) env(safe-area-inset-bottom,10px) env(safe-area-inset-left,10px); gap:0; justify-content:center; }
     canvas{ touch-action:manipulation; }
     #menu .howto{ display:none; }            /* the how-to is about buttons that aren't in mobile mode */
     #menu .flourish{ margin:.1em 0; }
@@ -474,12 +474,12 @@ function fitGameCanvas(){
     const foot = game.querySelector('.ded-foot'); if (foot && getComputedStyle(foot).display !== 'none') used += foot.offsetHeight;
   }
   const availH = vh - used;
-  const availW = game.clientWidth - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight);
+  const availW = Math.min(game.clientWidth, vw) - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight);
   // portrait board ONLY on touch devices held upright; desktop is always the wide board
   const portrait = IS_TOUCH && window.matchMedia && window.matchMedia('(orientation:portrait)').matches;
   ORIENT = portrait ? 'port' : 'land';
   const ratio = (ORIENT === 'port') ? (H / W) : (W / H);   // board width / height
-  const m = IS_TOUCH ? 14 : 0;                     // safety margin so nothing is clipped at the edge
+  const m = IS_TOUCH ? 8 : 0;                      // extra safety so nothing clips at the edge
   let w = Math.min(availW - 2*m, (availH - 2*m) * ratio);
   if (!(w > 0)) w = availW;
   w = Math.max(160, w);
