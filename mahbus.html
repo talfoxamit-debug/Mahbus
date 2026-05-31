@@ -517,6 +517,7 @@ function endTurn(){
 
 function announceWin(){
   Sound.win();
+  startConfetti();
   draw(); updateUI();
   const who = STATE.winner === HUMAN && STATE.mode === 'ai' ? 'ניצחת! 🎉'
             : (STATE.winner === 'W' ? 'הלבן ניצח! 🎉' : 'השחור ניצח! 🎉');
@@ -728,52 +729,23 @@ function colFromX(x){
 }
 
 function draw(){
-  ctx.clearRect(0, 0, W, H);
-  // outer frame
-  ctx.fillStyle = '#5b3618';
-  ctx.fillRect(0, 0, W, H);
-  // felt
-  ctx.fillStyle = '#0f5132';
-  ctx.fillRect(boardL, boardT, boardR - boardL, boardB - boardT);
-  // bar
-  ctx.fillStyle = '#5b3618';
-  ctx.fillRect(boardL + quadW, boardT, BAR, boardB - boardT);
-  // bear-off tray
-  ctx.fillStyle = '#2a1c10';
-  ctx.fillRect(trayL, boardT, trayR - trayL, boardB - boardT);
+  if (!BG) buildBoard();
+  ctx.drawImage(BG, 0, 0);          // cached frame, felt, home guides & triangles
 
   const sel = SELECTED;
   const human = STATE && (STATE.mode === 'hotseat' || STATE.current === HUMAN);
   const interactive = STATE && STATE.phase === 'move' && !AI_BUSY && human && !ROLLING;
   const previews = (interactive && sel !== null) ? pieceMovePreviews(STATE, STATE.current, sel) : [];
 
-  // triangles
-  for (let p = 1; p <= 24; p++){
-    const c = colForPoint(p), x = xForCol(c), bottom = isBottom(p);
-    const dark = (c % 2 === 0);
-    ctx.fillStyle = dark ? '#caa472' : '#9c6b3a';
-    ctx.beginPath();
-    if (bottom){
-      ctx.moveTo(x - slotW * 0.46, boardB);
-      ctx.lineTo(x + slotW * 0.46, boardB);
-      ctx.lineTo(x, boardB - ptLen);
-    } else {
-      ctx.moveTo(x - slotW * 0.46, boardT);
-      ctx.lineTo(x + slotW * 0.46, boardT);
-      ctx.lineTo(x, boardT + ptLen);
-    }
-    ctx.closePath();
-    ctx.fill();
-  }
-
   // pieces that can move get a soft dashed glow (only before one is picked up)
   if (interactive && sel === null){
     for (const f of new Set(legalMoves(STATE, STATE.current).map(m => m.from))) drawMovableGlow(f);
   }
 
-  // checkers + borne-off tray
+  // checkers + borne-off tray + progress counters
   for (let p = 1; p <= 24; p++) drawStack(p);
   drawOffTray();
+  drawCounters();
 
   // selected source ring
   if (sel !== null){
@@ -812,6 +784,116 @@ function draw(){
   }
 
   drawDice();
+  if (CONFETTI.length) drawConfetti();
+}
+
+/* ---------- cached board background (built once) ---------- */
+let BG = null;
+function buildBoard(){
+  BG = document.createElement('canvas'); BG.width = W; BG.height = H;
+  const g = BG.getContext('2d');
+
+  // wooden frame with vertical grain
+  const frame = g.createLinearGradient(0, 0, 0, H);
+  frame.addColorStop(0, '#8a5527'); frame.addColorStop(0.5, '#5b3618'); frame.addColorStop(1, '#6e4220');
+  g.fillStyle = frame; g.fillRect(0, 0, W, H);
+  g.globalAlpha = 0.06; g.strokeStyle = '#2c1a0c'; g.lineWidth = 1;
+  for (let i = 0; i < 70; i++){
+    const yy = Math.random() * H;
+    g.beginPath(); g.moveTo(0, yy);
+    g.bezierCurveTo(W*0.33, yy + (Math.random()*8-4), W*0.66, yy + (Math.random()*8-4), W, yy);
+    g.stroke();
+  }
+  g.globalAlpha = 1;
+
+  // felt with a soft centre sheen
+  const felt = g.createRadialGradient((boardL+boardR)/2, (boardT+boardB)/2, 30, (boardL+boardR)/2, (boardT+boardB)/2, 540);
+  felt.addColorStop(0, '#16683f'); felt.addColorStop(1, '#0b4126');
+  g.fillStyle = felt; g.fillRect(boardL, boardT, boardR - boardL, boardB - boardT);
+
+  // home-zone shading (right side: White home = bottom 1-6, Black home = top 19-24)
+  const mid = (boardT + boardB) / 2, zx = boardL + quadW + BAR, zw = boardR - zx;
+  g.fillStyle = 'rgba(244,234,210,0.10)'; g.fillRect(zx, mid, zw, boardB - mid);   // White home
+  g.fillStyle = 'rgba(120,170,255,0.10)'; g.fillRect(zx, boardT, zw, mid - boardT); // Black home
+
+  // triangles
+  for (let p = 1; p <= 24; p++){
+    const c = colForPoint(p), x = xForCol(c), bottom = isBottom(p);
+    g.fillStyle = (c % 2 === 0) ? '#caa472' : '#9c6b3a';
+    g.beginPath();
+    if (bottom){ g.moveTo(x - slotW*0.46, boardB); g.lineTo(x + slotW*0.46, boardB); g.lineTo(x, boardB - ptLen); }
+    else       { g.moveTo(x - slotW*0.46, boardT); g.lineTo(x + slotW*0.46, boardT); g.lineTo(x, boardT + ptLen); }
+    g.closePath(); g.fill();
+  }
+
+  // bar
+  const barG = g.createLinearGradient(boardL+quadW, 0, boardL+quadW+BAR, 0);
+  barG.addColorStop(0, '#4a2c14'); barG.addColorStop(0.5, '#774727'); barG.addColorStop(1, '#4a2c14');
+  g.fillStyle = barG; g.fillRect(boardL + quadW, boardT, BAR, boardB - boardT);
+
+  // bear-off tray
+  g.fillStyle = '#241710'; g.fillRect(trayL, boardT, trayR - trayL, boardB - boardT);
+
+  // home labels + bear-off direction arrows (faint)
+  const cx = (trayL + trayR) / 2;
+  g.globalAlpha = 0.85; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = '15px Georgia';
+  homeTag(g, cx, mid - 26, '#cfe0ff', 'בית שחור');   // Black home label (top)
+  homeTag(g, cx, mid + 26, '#f4ead2', 'בית לבן');     // White home label (bottom)
+  g.globalAlpha = 1;
+}
+function homeTag(g, x, y, color, text){
+  g.fillStyle = color;
+  g.fillText(text, x, y);
+  g.beginPath(); g.moveTo(x - 14, y + 14); g.lineTo(x + 10, y + 14);   // little → arrow toward tray
+  g.lineTo(x + 4, y + 9); g.moveTo(x + 10, y + 14); g.lineTo(x + 4, y + 19);
+  g.strokeStyle = color; g.lineWidth = 1.5; g.stroke();
+}
+
+// borne-off progress: big number per side in the tray
+function drawCounters(){
+  const cx = (trayL + trayR) / 2, mid = (boardT + boardB) / 2;
+  ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const yB = boardT + (mid - boardT) * 0.5, yW = mid + (boardB - mid) * 0.5;
+  ctx.fillStyle = 'rgba(255,255,255,0.95)'; ctx.font = 'bold 30px Georgia';
+  ctx.fillText(String(STATE.off.B), cx, yB);
+  ctx.fillStyle = 'rgba(255,245,220,0.97)';
+  ctx.fillText(String(STATE.off.W), cx, yW);
+  ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.font = 'bold 13px Georgia';
+  ctx.fillText('מתוך 15', cx, yB + 22);
+  ctx.fillStyle = 'rgba(255,245,220,0.6)';
+  ctx.fillText('מתוך 15', cx, yW + 22);
+  ctx.restore();
+}
+
+/* ---------- win confetti ---------- */
+let CONFETTI = [], confettiTimer = null;
+function startConfetti(){
+  const colors = ['#e0a52e','#3fae5a','#d2553f','#5d7488','#f4ead2','#ffe08a'];
+  CONFETTI = [];
+  for (let i = 0; i < 140; i++){
+    CONFETTI.push({
+      x: Math.random()*W, y: -20 - Math.random()*H*0.5,
+      vx: (Math.random()-0.5)*3, vy: 2 + Math.random()*3,
+      w: 6 + Math.random()*8, h: 8 + Math.random()*10,
+      rot: Math.random()*6.28, vr: (Math.random()-0.5)*0.3,
+      color: colors[(Math.random()*colors.length)|0],
+    });
+  }
+  const end = performance.now() + 4200;
+  clearInterval(confettiTimer);
+  confettiTimer = setInterval(() => {
+    for (const p of CONFETTI){ p.x += p.vx; p.y += p.vy; p.vy += 0.05; p.rot += p.vr; }
+    draw();
+    if (performance.now() > end){ clearInterval(confettiTimer); CONFETTI = []; draw(); }
+  }, 33);
+}
+function drawConfetti(){
+  for (const p of CONFETTI){
+    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+    ctx.fillStyle = p.color; ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+    ctx.restore();
+  }
 }
 
 function drawPointRing(p, color){
@@ -893,8 +975,11 @@ function drawChecker(x, y, owner, r, locked){
   const grad = ctx.createRadialGradient(x - r*0.3, y - r*0.3, r*0.2, x, y, r);
   if (white){ grad.addColorStop(0, '#fffdf5'); grad.addColorStop(1, '#d9c79a'); }
   else      { grad.addColorStop(0, '#4a4a4a'); grad.addColorStop(1, '#161616'); }
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.4)'; ctx.shadowBlur = 5; ctx.shadowOffsetX = 1.5; ctx.shadowOffsetY = 2.5;
   ctx.fillStyle = grad;
   ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  ctx.restore();
   ctx.lineWidth = 2; ctx.strokeStyle = white ? '#7a6a3a' : '#000';
   ctx.stroke();
   // inner ring
