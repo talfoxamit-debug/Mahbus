@@ -754,7 +754,8 @@ function drawPointRing(p, color){
   }
   const c = colForPoint(p), x = xForCol(c), bottom = isBottom(p);
   const pt = STATE.points[p];
-  const n = pt.top ? Math.max(0, pt.count - 1) : 0;   // top checker of the stack
+  const trapOff = pt.trapped !== null ? 1 : 0;
+  const n = pt.top ? trapOff + pt.count - 1 : 0;      // the topmost checker of the stack
   const cy = checkerY(bottom, n);
   ctx.strokeStyle = color; ctx.lineWidth = 7;
   ctx.beginPath(); ctx.arc(x, cy, R + 7, 0, 7); ctx.stroke();
@@ -779,7 +780,8 @@ function drawStepLabel(x, y, step){
 function drawDestMarker(p, step){
   const c = colForPoint(p), x = xForCol(c), bottom = isBottom(p);
   const pt = STATE.points[p];
-  const n = (pt.top === STATE.current) ? pt.count : 0;       // land on top of own stack
+  // land above everything already on the point (own stack, or a checker we'd trap)
+  const n = (pt.trapped !== null ? 1 : 0) + (pt.top ? pt.count : 0);
   const cy = checkerY(bottom, n);
   ctx.fillStyle = 'rgba(63,174,90,0.5)';
   ctx.strokeStyle = '#3fae5a'; ctx.lineWidth = 4;
@@ -797,17 +799,20 @@ function drawStack(p){
   if (pt.top === null && pt.trapped === null) return;
   const c = colForPoint(p), x = xForCol(c), bottom = isBottom(p);
 
-  // trapped (imprisoned) checker peeks out from the base
+  // imprisoned checker sits fully visible at the very bottom of the stack,
+  // with the capturing checker(s) stacked directly above it (not covering it).
+  let base = 0;
   if (pt.trapped !== null){
-    const baseY = bottom ? boardB - R - 4 + R * 0.7 : boardT + R + 4 - R * 0.7;
-    drawChecker(x, baseY, pt.trapped, R * 0.92, true);
+    drawChecker(x, checkerY(bottom, 0), pt.trapped, R, true);
+    base = 1;
   }
 
   const count = pt.top ? pt.count : 0;
-  const shown = Math.min(count, 5);
-  for (let i = 0; i < shown; i++) drawChecker(x, checkerY(bottom, i), pt.top, R, false);
-  if (count > 5){
-    const cy = checkerY(bottom, shown - 1);
+  const cap = pt.trapped !== null ? 4 : 5;           // keep the stack inside the triangle
+  const shown = Math.min(count, cap);
+  for (let i = 0; i < shown; i++) drawChecker(x, checkerY(bottom, base + i), pt.top, R, false);
+  if (count > cap){
+    const cy = checkerY(bottom, base + shown - 1);
     ctx.fillStyle = '#1f2a33'; ctx.font = `bold ${Math.round(R)}px Georgia`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(String(count), x, cy);
