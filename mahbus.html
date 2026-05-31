@@ -1040,7 +1040,25 @@ function draw(){
   }
 
   // reachable stops for the selected piece, each labeled with how many dice it
-  // costs (1,2,3,4). Drawn on top so multi-step landings are always visible.
+  // costs (1,2,3,4). A line links the picked piece to each landing so it's clear
+  // which piece goes where (important on the rotated portrait board).
+  if (interactive && sel !== null){
+    const sx = xForCol(colForPoint(sel)), sBottom = isBottom(sel), sPt = STATE.points[sel];
+    const sN = (sPt.trapped ? 1 : 0) + (sPt.top ? Math.max(0, sPt.count - 1) : 0);
+    const sy = checkerY(sBottom, sN);
+    for (const pv of previews){
+      let dx, dy;
+      if (pv.to === 'off'){ dx = (trayL + trayR) / 2; dy = (boardT + boardB) / 2; }
+      else {
+        const dp = STATE.points[pv.to];
+        dx = xForCol(colForPoint(pv.to));
+        dy = checkerY(isBottom(pv.to), (dp.trapped ? 1 : 0) + (dp.top ? dp.count : 0));
+      }
+      ctx.strokeStyle = 'rgba(63,174,90,0.6)'; ctx.lineWidth = 3; ctx.setLineDash([7, 5]);
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(dx, dy); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
   if (interactive){
     for (const pv of previews){
       if (pv.to === 'off'){
