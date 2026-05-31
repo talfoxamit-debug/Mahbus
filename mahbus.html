@@ -25,6 +25,18 @@
      text-shadow:0 2px 4px rgba(0,0,0,.4);}
   .flourish{color:#c9a43c; font-size:1.2rem; letter-spacing:.5em; margin:.1em 0 .3em;}
   .sub{color:#cdbf9f; margin:0 0 .6em; font-size:1.05rem;}
+  .dedication{
+    margin:16px auto; padding:14px 20px; max-width:540px; border-radius:14px;
+    border:1px solid rgba(201,164,60,.55); background:rgba(201,164,60,.08);
+    box-shadow:0 0 0 4px var(--panel), 0 0 0 6px rgba(201,164,60,.35);
+    color:#e9c46a; line-height:1.8;
+  }
+  .dedication .ded-he{font-size:1.2rem;}
+  .dedication .ded-fa{font-size:1.15rem; opacity:.95;}
+  .dedication .ded-orn{color:#c9a43c; letter-spacing:.4em; font-size:.95rem;}
+  .ded-foot{
+    margin:14px auto 0; color:#c9a43c; font-size:.95rem; line-height:1.6; opacity:.9;
+  }
   #game{display:none; max-width:1000px; margin:0 auto; padding:8px 12px 24px;}
   #menu{max-width:680px; margin:6vh auto 0; padding:0 16px;}
   .rules{
@@ -95,6 +107,11 @@
   <h1>מַחְבּוּס</h1>
   <div class="flourish">✦ ❖ ✦ ❖ ✦</div>
   <p class="sub">משחק מזרח-תיכוני קלאסי &mdash; "האסיר", בן דודו של השש-בש.</p>
+  <div class="dedication">
+    <div class="ded-orn">✦ ❖ ✦</div>
+    <div class="ded-he">מוקדש באהבה לסבא בוריס היקר — מטל ♥</div>
+    <div class="ded-fa">تقدیم با عشق به بابابزرگ عزیزم بوریس — تال</div>
+  </div>
   <div class="rules">
     <p><b>הרעיון.</b> שני השחקנים מתחילים עם כל 15 החיילים בערימה בפינות הרחוקות
     הנגדיות, מובילים אותם הביתה בכיוונים הפוכים, ואז מוציאים אותם מהלוח.
@@ -126,6 +143,9 @@
     <button id="btnNew"   class="ctrl" onclick="startGame(STATE.mode, STATE.level)">משחק חדש</button>
     <button id="btnMenu"  class="ctrl" onclick="toMenu()">תפריט</button>
     <button id="btnSound" class="ctrl" onclick="toggleSound()">🔊</button>
+  </div>
+  <div class="ded-foot">
+    מוקדש באהבה לסבא בוריס היקר — מטל ♥ &nbsp;·&nbsp; تقدیم با عشق به بابابزرگ عزیزم بوریس — تال
   </div>
 </div>
 
