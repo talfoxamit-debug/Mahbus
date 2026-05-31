@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>מחבוס</title>
+<title>המחבוס של סבא בוריס</title>
 <style>
   :root{
     --bg:#1f2a33; --panel:#27343f; --ink:#f4ead2; --accent:#e0a52e;
@@ -23,7 +23,30 @@
   }
   h1{margin:.3em 0 .05em; font-size:2.5rem; letter-spacing:1px; color:#e9c46a;
      text-shadow:0 2px 4px rgba(0,0,0,.4);}
+  .title-name{color:#e9c46a; font-size:1.45rem; font-weight:bold; margin:.1em 0;}
+  .title-name .fa{font-size:1.1rem; opacity:.9; font-weight:normal;}
   .flourish{color:#c9a43c; font-size:1.2rem; letter-spacing:.5em; margin:.1em 0 .3em;}
+  /* gold plaque shown above the board on the playing screen */
+  #gametitle{
+    margin:4px auto 8px; padding:8px 18px; display:inline-block; border-radius:12px;
+    color:#e9c46a; font-size:1.3rem; font-weight:bold;
+    border:1px solid rgba(201,164,60,.55); background:rgba(201,164,60,.08);
+    box-shadow:0 0 0 3px rgba(201,164,60,.18);
+  }
+  #gametitle .fa{font-size:1rem; opacity:.9; font-weight:normal;}
+  /* win celebration card */
+  #wincard{
+    position:fixed; left:50%; top:42%; transform:translate(-50%,-50%) scale(.9);
+    background:rgba(20,28,34,.96); border:2px solid #c9a43c; border-radius:18px;
+    box-shadow:0 0 0 6px rgba(201,164,60,.25), 0 12px 40px rgba(0,0,0,.6);
+    padding:26px 34px; color:#e9c46a; z-index:60; max-width:90%; text-align:center;
+    opacity:0; pointer-events:none; transition:opacity .4s, transform .4s;
+  }
+  #wincard.show{opacity:1; transform:translate(-50%,-50%) scale(1); pointer-events:auto;}
+  #wincard #wintext{font-size:2rem; font-weight:bold; margin-bottom:10px;}
+  #wincard .ded-he{font-size:1.15rem; line-height:1.7;}
+  #wincard .ded-fa{font-size:1.1rem; opacity:.95; line-height:1.7;}
+  #wincard .tap{font-size:.85rem; opacity:.6; margin-top:12px;}
   .sub{color:#cdbf9f; margin:0 0 .6em; font-size:1.05rem;}
   .dedication{
     margin:16px auto; padding:14px 20px; max-width:540px; border-radius:14px;
@@ -102,9 +125,18 @@
 
 <div id="toast"></div>
 
+<!-- win celebration card (tap to dismiss) -->
+<div id="wincard" onclick="this.classList.remove('show')">
+  <div id="wintext"></div>
+  <div class="ded-he">מוקדש באהבה לסבא בוריס היקר — מטל ♥</div>
+  <div class="ded-fa">تقدیم با عشق به بابابزرگ عزیزم بوریس — تال</div>
+  <div class="tap">(הקש כדי לסגור)</div>
+</div>
+
 <!-- ===================== START MENU ===================== -->
 <div id="menu">
   <h1>מַחְבּוּס</h1>
+  <div class="title-name">המשחק של סבא בוריס <span class="fa">· بازیِ بابابزرگ بوریس</span></div>
   <div class="flourish">✦ ❖ ✦ ❖ ✦</div>
   <p class="sub">משחק מזרח-תיכוני קלאסי &mdash; "האסיר", בן דודו של השש-בש.</p>
   <div class="dedication">
@@ -135,6 +167,7 @@
 
 <!-- ===================== GAME ===================== -->
 <div id="game">
+  <div id="gametitle">מַחְבּוּס · המשחק של סבא בוריס <span class="fa">· بابابزرگ بوریس</span></div>
   <div id="banner">&nbsp;</div>
   <canvas id="board" width="960" height="620"></canvas>
   <div id="controls">
@@ -279,6 +312,7 @@ function startGame(mode, level){
   HISTORY = [];
   AI_BUSY = false;
   Sound.unlock();
+  document.getElementById('wincard').classList.remove('show');
   document.getElementById('menu').style.display = 'none';
   document.getElementById('game').style.display = 'block';
   draw();
@@ -543,13 +577,18 @@ function endTurn(){
   if (STATE.mode === 'ai' && STATE.current === AI) setTimeout(aiTurn, 650);
 }
 
+let winTimer = null;
 function announceWin(){
   Sound.win();
   startConfetti();
   draw(); updateUI();
-  const who = STATE.winner === HUMAN && STATE.mode === 'ai' ? 'ניצחת! 🎉'
-            : (STATE.winner === 'W' ? 'הלבן ניצח! 🎉' : 'השחור ניצח! 🎉');
-  toast(who, 4000);
+  const who = STATE.winner === HUMAN && STATE.mode === 'ai' ? '🎉 ניצחת!'
+            : (STATE.winner === 'W' ? '🎉 הלבן ניצח!' : '🎉 השחור ניצח!');
+  const wc = document.getElementById('wincard');
+  document.getElementById('wintext').textContent = who;
+  wc.classList.add('show');
+  clearTimeout(winTimer);
+  winTimer = setTimeout(() => wc.classList.remove('show'), 7000);
 }
 
 /* =========================================================================
