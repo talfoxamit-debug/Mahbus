@@ -175,14 +175,6 @@
 
 <div id="toast"></div>
 
-<!-- shown only on phones held in portrait; auto-hides in landscape -->
-<div id="rotate">
-  <div class="rot-icon">📱</div>
-  <div class="rot-he">סובבו את הטלפון לרוחב<br>למסך מלא 🔄</div>
-  <div class="rot-fa">برای نمای کامل، گوشی را افقی بگیرید</div>
-  <button class="ctrl" onclick="document.getElementById('rotate').classList.add('dismissed')">לשחק ככה בכל זאת</button>
-</div>
-
 <!-- win celebration card (tap to dismiss) -->
 <div id="wincard" onclick="this.classList.remove('show')">
   <div id="wintext"></div>
@@ -258,6 +250,7 @@ let STATE = null;
 let SELECTED = null;         // point currently picked up (human)
 let HISTORY = [];            // undo snapshots for the current turn
 let AI_BUSY = false;
+let ORIENT = 'land';         // 'land' (wide) or 'port' (board rotated 90° for tall phones)
 
 /* ---------- small helpers ---------- */
 const opp = p => (p === 'W' ? 'B' : 'W');
@@ -479,14 +472,18 @@ function fitGameCanvas(){
   });
   const foot = game.querySelector('.ded-foot'); if (foot && getComputedStyle(foot).display !== 'none') used += foot.offsetHeight;
   const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+  const vw = (window.visualViewport && window.visualViewport.width) || window.innerWidth;
   const availH = vh - used;
   const availW = game.clientWidth - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight);
-  const ratio = cv.width / cv.height;            // 960 / 620
+  // tall viewport → portrait board (rotated 90°); otherwise the wide landscape board
+  ORIENT = (vh > vw * 1.05) ? 'port' : 'land';
+  const ratio = (ORIENT === 'port') ? (H / W) : (W / H);   // width / height of the board
   let w = Math.min(availW, availH * ratio);
   if (!(w > 0)) w = availW;
   w = Math.max(200, w);
   cv.style.width = w + 'px';
   cv.style.height = (w / ratio) + 'px';
+  if (STATE) draw();                              // re-render in the chosen orientation
 }
 function fitMenu(){
   const menu = document.getElementById('menu');
@@ -979,7 +976,8 @@ function colFromX(x){
 
 function draw(){
   if (!BG) buildBoard();
-  ctx.drawImage(BG, 0, 0);          // cached frame, felt, home guides & triangles
+  applyOrient();                    // landscape, or rotate the whole board 90° for portrait
+  ctx.drawImage(BG, 0, 0);          // cached frame, felt & triangles (drawn in landscape space)
 
   const sel = SELECTED;
   const human = STATE && (STATE.mode === 'hotseat' || STATE.current === HUMAN);
@@ -991,10 +989,11 @@ function draw(){
     for (const f of new Set(legalMoves(STATE, STATE.current).map(m => m.from))) drawMovableGlow(f);
   }
 
-  // checkers + borne-off tray + progress counters
+  // checkers + borne-off tray + progress counters + home labels
   for (let p = 1; p <= 24; p++) drawStack(p);
   drawOffTray();
   drawCounters();
+  drawHomeLabels();
 
   // selected source ring
   if (sel !== null){
@@ -1034,6 +1033,35 @@ function draw(){
 
   drawDice();
   if (CONFETTI.length) drawConfetti();
+}
+
+/* ---------- orientation: landscape, or the whole board rotated 90° for portrait ----------
+   Everything is drawn in the landscape "logical" space (W×H = 960×620). In portrait we
+   simply rotate that space into a tall canvas, and counter-rotate text so it stays upright. */
+function applyOrient(){
+  if (ORIENT === 'port'){
+    if (cv.width !== H){ cv.width = H; cv.height = W; }   // tall canvas (620×960)
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.translate(H, 0); ctx.rotate(Math.PI / 2);         // map logical 960×620 → tall
+  } else {
+    if (cv.width !== W){ cv.width = W; cv.height = H; }
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, cv.width, cv.height);
+  }
+}
+// draw text that stays upright regardless of board orientation
+function drawText(txt, x, y, font, color){
+  ctx.save();
+  ctx.font = font; ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  if (ORIENT === 'port'){ ctx.translate(x, y); ctx.rotate(-Math.PI / 2); ctx.fillText(txt, 0, 0); }
+  else ctx.fillText(txt, x, y);
+  ctx.restore();
+}
+function drawHomeLabels(){
+  const cx = (trayL + trayR) / 2, mid = (boardT + boardB) / 2;
+  drawText('בית שחור', cx, mid - 26, '15px Georgia', 'rgba(207,224,255,0.85)');
+  drawText('בית לבן',  cx, mid + 26, '15px Georgia', 'rgba(244,234,210,0.85)');
 }
 
 /* ---------- Persian (Khatam) ornament helpers ---------- */
@@ -1117,39 +1145,18 @@ function buildBoard(){
   g.strokeRect(trayL, boardT, trayR - trayL, boardB - boardT);
   g.strokeStyle = 'rgba(201,164,60,0.5)'; g.lineWidth = 1;
   g.strokeRect(boardL + 4, boardT + 4, boardR - boardL - 8, boardB - boardT - 8);
-
-  // home labels + bear-off direction arrows (faint)
-  const cx = (trayL + trayR) / 2;
-  g.globalAlpha = 0.85; g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.font = '15px Georgia';
-  homeTag(g, cx, mid - 26, '#cfe0ff', 'בית שחור');   // Black home label (top)
-  homeTag(g, cx, mid + 26, '#f4ead2', 'בית לבן');     // White home label (bottom)
-  g.globalAlpha = 1;
-}
-function homeTag(g, x, y, color, text){
-  g.fillStyle = color;
-  g.fillText(text, x, y);
-  g.beginPath(); g.moveTo(x - 14, y + 14); g.lineTo(x + 10, y + 14);   // little → arrow toward tray
-  g.lineTo(x + 4, y + 9); g.moveTo(x + 10, y + 14); g.lineTo(x + 4, y + 19);
-  g.strokeStyle = color; g.lineWidth = 1.5; g.stroke();
+  // (home labels are drawn per-frame in drawHomeLabels so they stay upright in both orientations)
 }
 
-// borne-off progress: big number per side in the tray
+// borne-off progress: big number per side in the tray (upright in both orientations)
 function drawCounters(){
   const cx = (trayL + trayR) / 2, mid = (boardT + boardB) / 2;
-  ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const yB = boardT + (mid - boardT) * 0.5, yW = mid + (boardB - mid) * 0.5;
-  ctx.fillStyle = 'rgba(255,255,255,0.95)'; ctx.font = 'bold 30px Georgia';
-  ctx.fillText(String(STATE.off.B), cx, yB);
-  ctx.fillStyle = 'rgba(255,245,220,0.97)';
-  ctx.fillText(String(STATE.off.W), cx, yW);
-  ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.font = 'bold 13px Georgia';
-  ctx.fillText('מתוך 15', cx, yB + 22);
-  ctx.fillStyle = 'rgba(255,245,220,0.6)';
-  ctx.fillText('מתוך 15', cx, yW + 22);
-  ctx.restore();
+  drawText(String(STATE.off.B), cx, yB, 'bold 30px Georgia', 'rgba(255,255,255,0.95)');
+  drawText(String(STATE.off.W), cx, yW, 'bold 30px Georgia', 'rgba(255,245,220,0.97)');
+  drawText('מתוך 15', cx, yB + 22, 'bold 13px Georgia', 'rgba(255,255,255,0.55)');
+  drawText('מתוך 15', cx, yW + 22, 'bold 13px Georgia', 'rgba(255,245,220,0.6)');
 }
-
 /* ---------- win confetti ---------- */
 let CONFETTI = [], confettiTimer = null;
 function startConfetti(){
@@ -1205,10 +1212,7 @@ function drawMovableGlow(p){
 }
 
 function drawStepLabel(x, y, step){
-  ctx.fillStyle = '#0c3a1f';
-  ctx.font = `bold ${Math.round(R * 0.95)}px Georgia`;
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(String(step), x, y);
+  drawText(String(step), x, y, `bold ${Math.round(R * 0.95)}px Georgia`, '#0c3a1f');
 }
 
 function drawDestMarker(p, step){
@@ -1248,9 +1252,7 @@ function drawStack(p){
   for (let i = 0; i < shown; i++) drawChecker(x, checkerY(bottom, base + i), pt.top, R, false);
   if (count > cap){
     const cy = checkerY(bottom, base + shown - 1);
-    ctx.fillStyle = '#1f2a33'; ctx.font = `bold ${Math.round(R)}px Georgia`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(String(count), x, cy);
+    drawText(String(count), x, cy, `bold ${Math.round(R)}px Georgia`, '#1f2a33');
   }
 }
 
@@ -1273,11 +1275,7 @@ function drawChecker(x, y, owner, r, locked){
   starPath(ctx, x, y, 8, r * 0.50, r * 0.24, Math.PI / 8); ctx.stroke();
   ctx.fillStyle = inlay;
   ctx.beginPath(); ctx.arc(x, y, r * 0.09, 0, 7); ctx.fill();
-  if (locked){
-    ctx.fillStyle = '#d2553f'; ctx.font = `bold ${Math.round(r*0.9)}px serif`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('🔒', x, y);
-  }
+  if (locked){ drawText('🔒', x, y, `bold ${Math.round(r*0.9)}px serif`, '#d2553f'); }
 }
 
 function drawOffTray(){
@@ -1360,8 +1358,11 @@ cv.addEventListener('click', e => {
   Sound.unlock();
 
   const rect = cv.getBoundingClientRect();
-  const x = (e.clientX - rect.left) * (W / rect.width);
-  const y = (e.clientY - rect.top)  * (H / rect.height);
+  let cx2 = (e.clientX - rect.left) * (cv.width / rect.width);
+  let cy2 = (e.clientY - rect.top)  * (cv.height / rect.height);
+  // map back into logical (landscape) board space
+  let x, y;
+  if (ORIENT === 'port'){ x = cy2; y = H - cx2; } else { x = cx2; y = cy2; }
 
   // if a piece is picked up, a click on one of its preview stops plays the
   // whole hop sequence (1 die for a single step, more for a multi-step chain)
