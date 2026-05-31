@@ -359,7 +359,7 @@ function onRoll(){
 }
 
 /* ---------- dice roll animation ---------- */
-let ROLLING = false, ANIM_DICE = null, animTimer = null, AI_HIGHLIGHT = null;
+let ROLLING = false, ANIM_DICE = null, animTimer = null, AI_HIGHLIGHT = null, ANIM = null;
 function animateRoll(player, done){
   Sound.roll();
   ROLLING = true; STATE.rolled = false; STATE.dicePool = [];
@@ -404,7 +404,46 @@ function pieceMovePreviews(st, p, from){
   return [...map.values()];
 }
 
-// play a sequence of one piece's moves for the human, animating each hop
+/* ---------- animated checker movement along a curved path ---------- */
+// screen position of a checker sitting at slot index n on point p (or the tray)
+function pointXY(p, n, owner){
+  if (p === 'off') return { x:(trayL + trayR)/2, y: owner === 'W' ? boardB - 30 : boardT + 30 };
+  return { x: xForCol(colForPoint(p)), y: checkerY(isBottom(p), n) };
+}
+
+// glide one checker from its source point to its destination along a bowed arc,
+// then call done(). The move itself is applied by the caller in done().
+function animateMove(m, owner, done){
+  const fp = STATE.points[m.from];
+  const sIdx = fp.top ? (fp.trapped !== null ? 1 : 0) + fp.count - 1 : 0;
+  const start = pointXY(m.from, sIdx, owner);
+  let end;
+  if (m.to === 'off') end = pointXY('off', 0, owner);
+  else {
+    const dp = STATE.points[m.to];
+    end = pointXY(m.to, (dp.trapped !== null ? 1 : 0) + (dp.top ? dp.count : 0), owner);
+  }
+  // control point: bow the path toward the middle of the board
+  const midx = (start.x + end.x)/2, midy = (start.y + end.y)/2;
+  const ctrl = { x: midx, y: midy + ((boardT + boardB)/2 - midy) * 0.4 - 45 };
+  const DUR = 560;
+  ANIM = { from:m.from, owner, x:start.x, y:start.y };
+  let t0 = null;
+  function frame(ts){
+    if (t0 === null) t0 = ts;
+    let t = (ts - t0) / DUR; if (t > 1) t = 1;
+    const e = t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t+2, 2)/2;   // ease in/out
+    const u = 1 - e;
+    ANIM.x = u*u*start.x + 2*u*e*ctrl.x + e*e*end.x;
+    ANIM.y = u*u*start.y + 2*u*e*ctrl.y + e*e*end.y;
+    draw();
+    if (t < 1) requestAnimationFrame(frame);
+    else { ANIM = null; done(); }
+  }
+  requestAnimationFrame(frame);
+}
+
+// play a sequence of one piece's moves for the human, gliding each hop
 function humanPlaySeq(seq){
   if (seq.length === 0) return;
   AI_BUSY = true; SELECTED = null;
@@ -419,13 +458,15 @@ function humanPlaySeq(seq){
       }
       return;
     }
-    const m = seq[i++];
+    const m = seq[i++], owner = STATE.current;
     HISTORY.push(clone(STATE));
-    playMoveSound(STATE, m);
-    applyMove(STATE, m);
-    draw(); updateUI();
-    if (STATE.phase === 'over'){ AI_BUSY = false; announceWin(); return; }
-    setTimeout(step, seq.length > 1 ? 300 : 0);
+    animateMove(m, owner, () => {
+      playMoveSound(STATE, m);          // sound on landing
+      applyMove(STATE, m);
+      draw(); updateUI();
+      if (STATE.phase === 'over'){ AI_BUSY = false; announceWin(); return; }
+      setTimeout(step, 140);
+    });
   })();
 }
 
@@ -611,8 +652,8 @@ function aiTurn(){
     // Play the computer's moves SLOWLY and very visibly, so it's easy to follow:
     //   1) ring the piece it's about to move (orange) and pause
     //   2) make the move + ring where it landed (green) and pause
-    const SHOW_BEFORE = 1200;   // look at the piece that's about to move
-    const SHOW_AFTER  = 1600;   // look at where it went
+    const SHOW_BEFORE = 1000;   // look at the piece that's about to move
+    const SHOW_AFTER  = 1300;   // look at where it went
     let i = 0;
     function step(){
       if (i >= seq.length || STATE.phase === 'over'){
@@ -625,11 +666,13 @@ function aiTurn(){
       AI_HIGHLIGHT = { from: m.from, to: null };   // "this is the piece I'll move"
       draw(); updateUI();
       setTimeout(() => {
-        playMoveSound(STATE, m);
-        applyMove(STATE, m);
-        AI_HIGHLIGHT = { from: m.from, to: m.to }; // "...and here is where it went"
-        draw(); updateUI();
-        setTimeout(step, SHOW_AFTER);
+        animateMove(m, STATE.current, () => {      // glide it along the curve
+          playMoveSound(STATE, m);
+          applyMove(STATE, m);
+          AI_HIGHLIGHT = { from: m.from, to: m.to }; // "...and here is where it went"
+          draw(); updateUI();
+          setTimeout(step, SHOW_AFTER);
+        });
       }, SHOW_BEFORE);
     }
     setTimeout(step, 900);   // let the dice result sink in before the first move
@@ -743,6 +786,14 @@ function draw(){
     if (AI_HIGHLIGHT.to   != null) drawPointRing(AI_HIGHLIGHT.to,   '#3fae5a');
   }
 
+  // the checker currently gliding along its curved path
+  if (ANIM){
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 4;
+    drawChecker(ANIM.x, ANIM.y, ANIM.owner, R, false);
+    ctx.restore();
+  }
+
   drawDice();
 }
 
@@ -807,7 +858,8 @@ function drawStack(p){
     base = 1;
   }
 
-  const count = pt.top ? pt.count : 0;
+  let count = pt.top ? pt.count : 0;
+  if (ANIM && ANIM.from === p && pt.top === ANIM.owner) count = Math.max(0, count - 1); // lifted in flight
   const cap = pt.trapped !== null ? 4 : 5;           // keep the stack inside the triangle
   const shown = Math.min(count, cap);
   for (let i = 0; i < shown; i++) drawChecker(x, checkerY(bottom, base + i), pt.top, R, false);
