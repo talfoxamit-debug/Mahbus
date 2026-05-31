@@ -248,7 +248,8 @@ let SELECTED = null;         // point currently picked up (human)
 let HISTORY = [];            // undo snapshots for the current turn
 let AI_BUSY = false;
 let ORIENT = 'land';         // 'land' (wide) or 'port' (board rotated 90° for tall phones)
-const IS_TOUCH = !!(window.matchMedia && window.matchMedia('(pointer:coarse)').matches); // phone/tablet
+const IS_TOUCH = !!(('ontouchstart' in window) || (navigator.maxTouchPoints > 0) ||
+                    (window.matchMedia && window.matchMedia('(pointer:coarse)').matches)); // phone/tablet
 
 /* ---------- small helpers ---------- */
 const opp = p => (p === 'W' ? 'B' : 'W');
@@ -476,8 +477,11 @@ function fitGameCanvas(){
   }
   const availH = vh - used;
   const availW = Math.min(game.clientWidth, vw) - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight);
-  // tall touch screen → the rotated full-screen portrait board; desktop is always the wide board
-  ORIENT = (IS_TOUCH && vh > vw) ? 'port' : 'land';
+  // portrait if ANY signal says so (in-app browsers misreport some) — touch only; desktop stays wide
+  const isPortrait = (window.innerHeight > window.innerWidth)
+                  || (vh > vw)
+                  || (window.matchMedia && window.matchMedia('(orientation:portrait)').matches);
+  ORIENT = (IS_TOUCH && isPortrait) ? 'port' : 'land';
   const ratio = (ORIENT === 'port') ? (H / W) : (W / H);   // board width / height
   const m = IS_TOUCH ? 8 : 0;                      // extra safety so nothing clips at the edge
   let w = Math.min(availW - 2*m, (availH - 2*m) * ratio);
