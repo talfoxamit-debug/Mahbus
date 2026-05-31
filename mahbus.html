@@ -146,19 +146,12 @@
     .ctrl{font-size:clamp(.85rem,3.4vh,1.2rem); padding:7px 16px;}
     #controls{gap:6px; margin:3px 0 1px;}
   }
-  /* phones in portrait: prompt to rotate (a wide board needs landscape) */
-  #rotate{display:none;}
-  @media (orientation:portrait) and (pointer:coarse){
-    #rotate:not(.dismissed){
-      display:flex; position:fixed; inset:0; z-index:80;
-      background:rgba(15,20,25,.97); flex-direction:column; align-items:center;
-      justify-content:center; text-align:center; padding:26px; gap:16px; color:#e9c46a;
-    }
+  /* TOUCH DEVICES ONLY (phones/tablets): pure board + dice, no buttons, max play area.
+     Desktop/laptop (pointer:fine) is completely unaffected. */
+  @media (pointer:coarse){
+    #gametitle, #banner, #controls, .ded-foot{ display:none !important; }
+    #game{ padding:2px; gap:0; }
   }
-  .rot-icon{font-size:4.5rem; animation:rothint 2.2s ease-in-out infinite;}
-  @keyframes rothint{0%,55%{transform:rotate(0)} 78%,100%{transform:rotate(90deg)}}
-  .rot-he{font-size:1.7rem; font-weight:bold; line-height:1.4;}
-  .rot-fa{font-size:1.35rem; opacity:.92;}
   #toast{
     position:fixed; left:50%; top:14px; transform:translateX(-50%);
     background:#000a; color:#fff; padding:10px 18px; border-radius:10px;
@@ -251,6 +244,7 @@ let SELECTED = null;         // point currently picked up (human)
 let HISTORY = [];            // undo snapshots for the current turn
 let AI_BUSY = false;
 let ORIENT = 'land';         // 'land' (wide) or 'port' (board rotated 90° for tall phones)
+const IS_TOUCH = !!(window.matchMedia && window.matchMedia('(pointer:coarse)').matches); // phone/tablet
 
 /* ---------- small helpers ---------- */
 const opp = p => (p === 'W' ? 'B' : 'W');
@@ -1032,6 +1026,21 @@ function draw(){
   }
 
   drawDice();
+
+  // touch mode has no buttons, so draw the needed prompts on the board itself
+  if (IS_TOUCH && STATE){
+    const mx = (boardL + boardR) / 2, my = (boardT + boardB) / 2;
+    const human = STATE.mode === 'hotseat' || STATE.current === HUMAN;
+    if (STATE.phase === 'await' && human && !AI_BUSY && !ROLLING){
+      const who = STATE.current === 'W' ? 'הלבן' : 'השחור';
+      drawText('🎲  ' + who + ' — הקש לזריקה', mx, my, 'bold 30px Georgia', 'rgba(255,255,255,0.95)');
+    } else if (STATE.phase === 'over'){
+      drawText('הקש למשחק חדש', mx, my + 46, 'bold 26px Georgia', 'rgba(255,255,255,0.9)');
+    } else if (STATE.mode === 'ai' && STATE.current === AI && !ROLLING){
+      drawText('🤖 …', mx, my, 'bold 30px Georgia', 'rgba(255,255,255,0.85)');
+    }
+  }
+
   if (CONFETTI.length) drawConfetti();
 }
 
@@ -1353,9 +1362,16 @@ function roundRect(x, y, w, h, r){
    ========================================================================= */
 
 cv.addEventListener('click', e => {
-  if (!STATE || STATE.phase !== 'move' || AI_BUSY || ROLLING) return;
-  if (STATE.mode === 'ai' && STATE.current !== HUMAN) return;
+  if (!STATE) return;
   Sound.unlock();
+  const humanTurn = STATE.mode === 'hotseat' || STATE.current === HUMAN;
+  // touch (button-less) mode: tap to roll, and tap to start a new game when it ends
+  if (IS_TOUCH){
+    if (STATE.phase === 'over'){ startGame(STATE.mode, STATE.level); return; }
+    if (STATE.phase === 'await' && humanTurn && !AI_BUSY && !ROLLING){ onRoll(); return; }
+  }
+  if (STATE.phase !== 'move' || AI_BUSY || ROLLING) return;
+  if (STATE.mode === 'ai' && STATE.current !== HUMAN) return;
 
   const rect = cv.getBoundingClientRect();
   let cx2 = (e.clientX - rect.left) * (cv.width / rect.width);
