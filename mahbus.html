@@ -1044,7 +1044,7 @@ function draw(){
   // which piece goes where (important on the rotated portrait board).
   if (interactive && sel !== null){
     const sx = xForCol(colForPoint(sel)), sBottom = isBottom(sel), sPt = STATE.points[sel];
-    const sN = (sPt.trapped ? 1 : 0) + (sPt.top ? Math.max(0, sPt.count - 1) : 0);
+    const sN = Math.min((sPt.trapped ? 1 : 0) + (sPt.top ? Math.max(0, sPt.count - 1) : 0), 5);
     const sy = checkerY(sBottom, sN);
     for (const pv of previews){
       let dx, dy;
@@ -1052,7 +1052,7 @@ function draw(){
       else {
         const dp = STATE.points[pv.to];
         dx = xForCol(colForPoint(pv.to));
-        dy = checkerY(isBottom(pv.to), (dp.trapped ? 1 : 0) + (dp.top ? dp.count : 0));
+        dy = checkerY(isBottom(pv.to), Math.min((dp.trapped ? 1 : 0) + (dp.top ? dp.count : 0), 5));
       }
       ctx.strokeStyle = 'rgba(63,174,90,0.6)'; ctx.lineWidth = 3; ctx.setLineDash([7, 5]);
       ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(dx, dy); ctx.stroke();
@@ -1266,7 +1266,7 @@ function drawPointRing(p, color){
   const c = colForPoint(p), x = xForCol(c), bottom = isBottom(p);
   const pt = STATE.points[p];
   const trapOff = pt.trapped !== null ? 1 : 0;
-  const n = pt.top ? trapOff + pt.count - 1 : 0;      // the topmost checker of the stack
+  const n = Math.min(pt.top ? trapOff + pt.count - 1 : 0, 5);   // clamp to visible stack
   const cy = checkerY(bottom, n);
   ctx.strokeStyle = color; ctx.lineWidth = 7;
   ctx.beginPath(); ctx.arc(x, cy, R + 7, 0, 7); ctx.stroke();
@@ -1288,8 +1288,8 @@ function drawStepLabel(x, y, step){
 function drawDestMarker(p, step){
   const c = colForPoint(p), x = xForCol(c), bottom = isBottom(p);
   const pt = STATE.points[p];
-  // land above everything already on the point (own stack, or a checker we'd trap)
-  const n = (pt.trapped !== null ? 1 : 0) + (pt.top ? pt.count : 0);
+  // land just above the visible stack — clamp so tall stacks don't push it off-board
+  const n = Math.min((pt.trapped !== null ? 1 : 0) + (pt.top ? pt.count : 0), 5);
   const cy = checkerY(bottom, n);
   ctx.fillStyle = 'rgba(63,174,90,0.5)';
   ctx.strokeStyle = '#3fae5a'; ctx.lineWidth = 4;
@@ -1322,8 +1322,19 @@ function drawStack(p){
   for (let i = 0; i < shown; i++) drawChecker(x, checkerY(bottom, base + i), pt.top, R, false);
   if (count > cap){
     const cy = checkerY(bottom, base + shown - 1);
-    drawText(String(count), x, cy, `bold ${Math.round(R)}px Georgia`, '#1f2a33');
+    drawCountBadge(x, cy, count);
   }
+}
+
+// a clear gold badge with a dark number, so the stack count pops on any colour
+function drawCountBadge(x, y, n){
+  ctx.save();
+  ctx.beginPath(); ctx.arc(x, y, R * 0.66, 0, 7);
+  ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 4;
+  ctx.fillStyle = '#f0c64b'; ctx.fill();
+  ctx.shadowBlur = 0; ctx.lineWidth = 2; ctx.strokeStyle = '#5b3618'; ctx.stroke();
+  ctx.restore();
+  drawText(String(n), x, y, `bold ${Math.round(R * 0.92)}px Georgia`, '#2a1a08');
 }
 
 function drawChecker(x, y, owner, r, locked){
