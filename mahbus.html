@@ -465,6 +465,7 @@ function fitGameCanvas(){
   if (!game || getComputedStyle(game).display === 'none') return;
   const s = getComputedStyle(game);
   const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+  const vw = (window.visualViewport && window.visualViewport.width)  || window.innerWidth;
   if (IS_TOUCH) game.style.height = vh + 'px';     // match the VISIBLE area so nothing scrolls
   // space taken by chrome (none on touch — board only)
   let used = parseFloat(s.paddingTop) + parseFloat(s.paddingBottom);
@@ -475,9 +476,8 @@ function fitGameCanvas(){
   }
   const availH = vh - used;
   const availW = Math.min(game.clientWidth, vw) - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight);
-  // portrait board ONLY on touch devices held upright; desktop is always the wide board
-  const portrait = IS_TOUCH && window.matchMedia && window.matchMedia('(orientation:portrait)').matches;
-  ORIENT = portrait ? 'port' : 'land';
+  // tall touch screen → the rotated full-screen portrait board; desktop is always the wide board
+  ORIENT = (IS_TOUCH && vh > vw) ? 'port' : 'land';
   const ratio = (ORIENT === 'port') ? (H / W) : (W / H);   // board width / height
   const m = IS_TOUCH ? 8 : 0;                      // extra safety so nothing clips at the edge
   let w = Math.min(availW - 2*m, (availH - 2*m) * ratio);
