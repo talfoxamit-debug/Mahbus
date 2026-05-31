@@ -170,29 +170,46 @@ const Sound = (function(){
     o.connect(g).connect(c.destination);
     o.start(t0); o.stop(t0 + dur + 0.02);
   }
-  function noise(t0, dur, peak){
+  // a short "tok" — noise burst through a resonant band-pass = a wooden knock
+  function knock(t0, freq, dur, peak, q){
     const c = ac(); if (!c) return;
-    const n = Math.floor(c.sampleRate * dur);
+    const n = Math.max(1, Math.floor(c.sampleRate * dur));
     const buf = c.createBuffer(1, n, c.sampleRate);
     const d = buf.getChannelData(0);
-    for (let i = 0; i < n; i++) d[i] = (Math.random()*2 - 1) * (1 - i/n); // decaying rattle
+    for (let i = 0; i < n; i++) d[i] = (Math.random()*2 - 1) * Math.pow(1 - i/n, 2); // sharp attack, quick decay
     const src = c.createBufferSource(); src.buffer = buf;
-    const g = c.createGain(); g.gain.value = peak || 0.25;
-    const f = c.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 800;
-    src.connect(f).connect(g).connect(c.destination); src.start(t0);
+    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = freq; bp.Q.value = q || 6;
+    const g = c.createGain();
+    g.gain.setValueAtTime(peak || 0.3, t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(bp).connect(g).connect(c.destination);
+    src.start(t0); src.stop(t0 + dur + 0.03);
   }
   return {
     unlock(){ ac(); },
     set(on){ enabled = on; },
     get enabled(){ return enabled; },
-    roll(){ if (!enabled) return; const c = ac(); if (!c) return; noise(c.currentTime, 0.32, 0.3); },
-    move(){ if (!enabled) return; const c = ac(); if (!c) return; tone(280, c.currentTime, 0.08, 'triangle', 0.18); },
-    trap(){ if (!enabled) return; const c = ac(); if (!c) return;
-            tone(200, c.currentTime, 0.12, 'square', 0.22); tone(110, c.currentTime+0.06, 0.18, 'sawtooth', 0.2); },
-    off(){ if (!enabled) return; const c = ac(); if (!c) return;
-           tone(880, c.currentTime, 0.12, 'sine', 0.22); tone(1320, c.currentTime+0.08, 0.14, 'sine', 0.18); },
-    win(){ if (!enabled) return; const c = ac(); if (!c) return;
-           [523,659,784,1046].forEach((f,i)=>tone(f, c.currentTime + i*0.13, 0.22, 'triangle', 0.22)); },
+    // dice tumbling and settling on a wooden board: scattered woody clacks
+    roll(){
+      if (!enabled){ return; } const c = ac(); if (!c) return;
+      let when = c.currentTime;
+      knock(when, 320, 0.10, 0.18, 2);               // low wooden "body" of the board
+      const hits = 6 + Math.floor(Math.random()*3);
+      for (let i = 0; i < hits; i++){
+        when += 0.045 + Math.random()*0.07;
+        knock(when, 1500 + Math.random()*1500, 0.045 + Math.random()*0.03,
+              0.14 + Math.random()*0.12, 5 + Math.random()*4);
+      }
+      knock(when + 0.13, 1700, 0.07, 0.24, 6);        // two final settling taps
+      knock(when + 0.21, 1250, 0.08, 0.20, 5);
+    },
+    move(){ if (!enabled) return; const c = ac(); if (!c) return; knock(c.currentTime, 900, 0.06, 0.16, 4); }, // soft wood tap
+    trap(){ if (!enabled) return; const c = ac(); if (!c) return;                                              // heavier capture
+            knock(c.currentTime, 430, 0.10, 0.30, 3.5); knock(c.currentTime + 0.05, 760, 0.07, 0.2, 5); },
+    off(){ if (!enabled) return; const c = ac(); if (!c) return;                                               // pleasant ding
+           tone(880, c.currentTime, 0.13, 'sine', 0.2); tone(1320, c.currentTime + 0.08, 0.16, 'sine', 0.16); },
+    win(){ if (!enabled) return; const c = ac(); if (!c) return;                                               // little fanfare
+           [523,659,784,1046].forEach((f,i) => tone(f, c.currentTime + i*0.14, 0.24, 'sine', 0.2)); },
   };
 })();
 
