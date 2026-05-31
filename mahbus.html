@@ -479,7 +479,8 @@ function fitGameCanvas(){
   const portrait = IS_TOUCH && window.matchMedia && window.matchMedia('(orientation:portrait)').matches;
   ORIENT = portrait ? 'port' : 'land';
   const ratio = (ORIENT === 'port') ? (H / W) : (W / H);   // board width / height
-  let w = Math.min(availW, availH * ratio);
+  const m = IS_TOUCH ? 14 : 0;                     // safety margin so nothing is clipped at the edge
+  let w = Math.min(availW - 2*m, (availH - 2*m) * ratio);
   if (!(w > 0)) w = availW;
   w = Math.max(160, w);
   cv.style.width = w + 'px';
