@@ -64,7 +64,7 @@
   }
   /* play screen fills the viewport; the board auto-sizes to leftover space */
   #game{
-    display:none; flex-direction:column; align-items:center; justify-content:flex-start;
+    display:none; flex-direction:column; align-items:center; justify-content:center;
     height:100vh; height:100dvh; overflow:hidden; padding:6px 8px; gap:2px; margin:0 auto;
   }
   /* menu fills the viewport and is scaled to fit (never scrolls) */
@@ -134,6 +134,17 @@
     #btnRoll .hint{display:none;}         /* no spacebar on a phone */
     #controls{gap:6px; margin:4px 0 2px;}
     .ded-foot{margin:3px auto 0;}
+  }
+  /* short / landscape screens: hide extras so the board fills the height */
+  @media (max-height:520px){
+    #game{padding:3px 6px; gap:0;}
+    #gametitle{display:none;}
+    .ded-foot{display:none;}
+    #banner{font-size:clamp(1rem,4.5vh,1.6rem); padding:2px 6px;}
+    #btnRoll{font-size:clamp(1rem,4vh,1.6rem); padding:8px 28px;}
+    #btnRoll .hint{display:none;}
+    .ctrl{font-size:clamp(.85rem,3.4vh,1.2rem); padding:7px 16px;}
+    #controls{gap:6px; margin:3px 0 1px;}
   }
   #toast{
     position:fixed; left:50%; top:14px; transform:translateX(-50%);
@@ -245,14 +256,17 @@ const Sound = (function(){
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return null;
       ctx = new AC();
-      const comp = ctx.createDynamicsCompressor();   // keep it smooth, no clipping
-      comp.threshold.value = -14; comp.ratio.value = 3; comp.knee.value = 18;
-      master = ctx.createGain(); master.gain.value = 0.85;
-      master.connect(comp); comp.connect(ctx.destination);
-      reverb = ctx.createConvolver(); reverb.buffer = makeIR(2.4, 2.6);
-      const rev = ctx.createGain(); rev.gain.value = 0.22;
-      reverb.connect(rev); rev.connect(master);
-      reverb._send = rev;
+      const comp = ctx.createDynamicsCompressor();
+      comp.threshold.value = -16; comp.ratio.value = 2.5; comp.knee.value = 22;
+      const warm = ctx.createBiquadFilter();          // roll off the cold highs
+      warm.type = 'lowpass'; warm.frequency.value = 5000; warm.Q.value = 0.4;
+      master = ctx.createGain(); master.gain.value = 0.8;
+      master.connect(warm); warm.connect(comp); comp.connect(ctx.destination);
+      reverb = ctx.createConvolver(); reverb.buffer = makeIR(3.0, 2.0);
+      const dark = ctx.createBiquadFilter();          // soft, dark reverb tail
+      dark.type = 'lowpass'; dark.frequency.value = 2300;
+      const rev = ctx.createGain(); rev.gain.value = 0.32;
+      reverb.connect(dark); dark.connect(rev); rev.connect(master);
     }
     if (ctx.state === 'suspended') ctx.resume();
     return ctx;
@@ -270,26 +284,27 @@ const Sound = (function(){
     node.connect(master);
     if (send > 0){ const g = ctx.createGain(); g.gain.value = send; node.connect(g); g.connect(reverb); }
   }
-  // Karplus–Strong plucked/struck string — the santur voice
-  function pluck(freq, t0, dur, peak, bright, send){
+  // warm, soft mallet/marimba-like voice: a gentle sine with a slow attack and a
+  // soft octave that fades fast, heavily low-passed = mellow and round, not metallic
+  function note(freq, t0, dur, peak, bright, send){
     const c = ac(); if (!c) return;
-    const rate = c.sampleRate, len = Math.floor(rate * dur), N = Math.max(2, Math.round(rate / freq));
-    const buf = c.createBuffer(1, len, rate), d = buf.getChannelData(0);
-    for (let i = 0; i < N; i++) d[i] = Math.random()*2 - 1;            // excite the string
-    for (let i = N; i < len; i++) d[i] = (d[i-N] + d[i-N+1]) * 0.4985; // gentle natural decay
-    const src = c.createBufferSource(); src.buffer = buf;
-    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = bright || 3200;
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass';
+    lp.frequency.value = Math.min(bright || 2000, freq * 4); lp.Q.value = 0.5;
+    route(lp, send == null ? 0.32 : send);
     const g = c.createGain();
     g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(peak, t0 + 0.006);
+    g.gain.exponentialRampToValueAtTime(peak, t0 + 0.03);     // soft attack = warm, no click
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    src.connect(lp); lp.connect(g); route(g, send == null ? 0.4 : send);
-    src.start(t0); src.stop(t0 + dur + 0.05);
-  }
-  // a santur note = two slightly detuned courses (like the real instrument's paired strings)
-  function note(freq, t0, dur, peak, bright, send){
-    pluck(freq, t0, dur, peak, bright, send);
-    pluck(freq * 1.0035, t0, dur, peak * 0.7, bright, send);
+    g.connect(lp);
+    const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = freq;
+    o.connect(g); o.start(t0); o.stop(t0 + dur + 0.05);
+    const g2 = c.createGain();
+    g2.gain.setValueAtTime(0.0001, t0);
+    g2.gain.exponentialRampToValueAtTime(peak * 0.16, t0 + 0.025);
+    g2.gain.exponentialRampToValueAtTime(0.0001, t0 + dur * 0.4);
+    g2.connect(lp);
+    const o2 = c.createOscillator(); o2.type = 'sine'; o2.frequency.value = freq * 2;
+    o2.connect(g2); o2.start(t0); o2.stop(t0 + dur * 0.4 + 0.05);
   }
   function tom(t0, peak){                              // tombak bass "tom"
     const c = ac(); if (!c) return;
@@ -301,15 +316,23 @@ const Sound = (function(){
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.34);
     o.connect(g); route(g, 0.12); o.start(t0); o.stop(t0 + 0.38);
   }
-  function tek(t0, peak, freq){                        // tombak rim "tek"
+  // a warm wooden "tok" — a die landing on a wooden board: a short noise burst
+  // through a low woody resonance, plus a soft low body tone, all low-passed
+  function clack(t0, freq, peak){
     const c = ac(); if (!c) return;
-    const dur = 0.05, len = Math.floor(c.sampleRate * dur);
+    const dur = 0.085, len = Math.floor(c.sampleRate * dur);
     const buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
-    for (let i = 0; i < len; i++) d[i] = (Math.random()*2 - 1) * Math.pow(1 - i/len, 3);
+    for (let i = 0; i < len; i++) d[i] = (Math.random()*2 - 1) * Math.pow(1 - i/len, 4);
     const src = c.createBufferSource(); src.buffer = buf;
-    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = freq || 2600; bp.Q.value = 1.6;
-    const g = c.createGain(); g.gain.value = peak || 0.3;
-    src.connect(bp); bp.connect(g); route(g, 0.18); src.start(t0);
+    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = freq; bp.Q.value = 3.5;
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1700; // keep it mellow
+    const g = c.createGain(); g.gain.value = peak;
+    src.connect(bp); bp.connect(lp); lp.connect(g); route(g, 0.12); src.start(t0);
+    const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = freq * 0.5; // woody body
+    const og = c.createGain();
+    og.gain.setValueAtTime(peak * 0.5, t0);
+    og.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.07);
+    o.connect(og); route(og, 0.1); o.start(t0); o.stop(t0 + 0.09);
   }
   function shimmer(t0, dur, peak){                     // daf jingles
     const c = ac(); if (!c) return;
@@ -320,8 +343,8 @@ const Sound = (function(){
     const g = c.createGain(); g.gain.value = peak || 0.07;
     src.connect(hp); hp.connect(g); route(g, 0.35); src.start(t0);
   }
-  // Persian Shur mode on D (Ek = E "koron", a quarter-tone flat — the signature colour)
-  const S = { D:293.66, Ek:320.2, F:349.23, G:392.0, A:440.0, Bb:466.16, C:523.25, D2:587.33, F2:698.46, A2:880.0 };
+  // warm, consonant A-minor pentatonic (no microtones — keeps it sweet, never "off")
+  const S = { D:220, Ek:261.63, F:293.66, G:329.63, A:392.0, Bb:440, C:523.25, D2:587.33, F2:698.46, A2:880.0 };
   const MOVE = [S.G, S.A, S.C, S.D2, S.F];             // a gentle melody emerges as you move
 
   return {
@@ -330,10 +353,13 @@ const Sound = (function(){
     get enabled(){ return enabled; },
     move(){ if (!enabled) return; const c = ac(); if (!c) return;
             note(MOVE[(Math.random()*MOVE.length)|0], c.currentTime, 0.85, 0.14, 3000, 0.45); },
-    roll(){ if (!enabled) return; const c = ac(); if (!c) return; const t = c.currentTime;   // tombak/daf flourish
-            shimmer(t, 0.45, 0.05);
-            tek(t, 0.22, 2800); tek(t+0.085, 0.17, 2400); tek(t+0.155, 0.2, 3000); tek(t+0.235, 0.15, 2300);
-            tom(t+0.33, 0.5); tek(t+0.42, 0.15, 2600); },
+    roll(){ if (!enabled) return; const c = ac(); if (!c) return; let w = c.currentTime;     // dice tumbling on wood
+            const hits = 4 + (Math.random()*3 | 0);
+            for (let i = 0; i < hits; i++){
+              w += 0.05 + Math.random()*0.06;
+              clack(w, 360 + Math.random()*460, 0.16 + Math.random()*0.08);
+            }
+            clack(w + 0.12, 500, 0.18); clack(w + 0.22, 340, 0.14); },                        // settle
     trap(){ if (!enabled) return; const c = ac(); if (!c) return; const t = c.currentTime;   // dramatic capture
             tom(t, 0.5);
             note(S.D,  t+0.02, 1.5, 0.16, 2400, 0.55);
@@ -343,8 +369,8 @@ const Sound = (function(){
     win(){ if (!enabled) return; const c = ac(); if (!c) return; const t = c.currentTime;     // santur flourish
            const seq = [S.D, S.F, S.G, S.A, S.C, S.D2, S.A, S.D2];
            const tm  = [0, .15, .29, .43, .60, .78, .98, 1.18];
-           seq.forEach((f,i) => note(f, t+tm[i], 1.5, 0.16, 3400, 0.5));
-           tom(t, 0.4); tom(t+0.78, 0.4); shimmer(t+0.78, 0.6, 0.06); },
+           seq.forEach((f,i) => note(f, t+tm[i], 1.6, 0.15, 2200, 0.45));
+           tom(t, 0.36); tom(t+0.78, 0.36); },
   };
 })();
 
@@ -409,8 +435,9 @@ function fitGameCanvas(){
   ['gametitle', 'banner', 'controls'].forEach(id => {
     const e = document.getElementById(id); if (e) used += e.offsetHeight;
   });
-  const foot = game.querySelector('.ded-foot'); if (foot) used += foot.offsetHeight;
-  const availH = window.innerHeight - used;
+  const foot = game.querySelector('.ded-foot'); if (foot && getComputedStyle(foot).display !== 'none') used += foot.offsetHeight;
+  const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+  const availH = vh - used;
   const availW = game.clientWidth - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight);
   const ratio = cv.width / cv.height;            // 960 / 620
   let w = Math.min(availW, availH * ratio);
@@ -430,8 +457,12 @@ function fitMenu(){
 }
 function fitScreens(){ fitGameCanvas(); fitMenu(); }
 window.addEventListener('resize', fitScreens);
-window.addEventListener('orientationchange', () => setTimeout(fitScreens, 200));
+window.addEventListener('orientationchange', () => { [120, 350, 700].forEach(d => setTimeout(fitScreens, d)); });
 window.addEventListener('load', () => { fitScreens(); setTimeout(fitScreens, 300); });
+if (window.visualViewport){               // most reliable on phones / in-app browsers
+  window.visualViewport.addEventListener('resize', fitScreens);
+  window.visualViewport.addEventListener('scroll', fitScreens);
+}
 
 /* =========================================================================
    RULES
