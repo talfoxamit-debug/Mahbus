@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mahbus &mdash; محبوس</title>
+<style>
+  :root{
+    --bg:#1f2a33; --panel:#27343f; --ink:#f4ead2; --accent:#e0a52e;
+    --good:#3fae5a; --bad:#d2553f; --wood:#7a4a23; --wood2:#925a2c;
+    --felt:#0f5132; --felt2:#0b3d27;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:Georgia,"Times New Roman",serif; text-align:center;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1{margin:.3em 0 .1em; font-size:2.4rem; letter-spacing:1px;}
+  .sub{color:#cdbf9f; margin:0 0 .6em; font-size:1.05rem;}
+  #game{display:none; max-width:1000px; margin:0 auto; padding:8px 12px 24px;}
+  #menu{max-width:680px; margin:6vh auto 0; padding:0 16px;}
+  .rules{
+    background:var(--panel); border:2px solid #3a4a57; border-radius:14px;
+    padding:18px 22px; text-align:left; font-size:1.08rem; line-height:1.5;
+    margin:18px auto;
+  }
+  .rules b{color:var(--accent);}
+  .bigbtn{
+    font-family:inherit; font-size:1.35rem; font-weight:bold; color:#1f2a33;
+    background:var(--accent); border:none; border-radius:12px;
+    padding:18px 28px; margin:10px; cursor:pointer; min-width:240px;
+    box-shadow:0 4px 0 #a9781f; transition:transform .05s;
+  }
+  .bigbtn:hover{transform:translateY(-2px);}
+  .bigbtn:active{transform:translateY(2px); box-shadow:0 2px 0 #a9781f;}
+  .bigbtn.alt{background:#5d7488; color:#fff; box-shadow:0 4px 0 #3c4d5c;}
+  canvas{
+    background:#000; border-radius:10px; width:100%; height:auto;
+    max-width:960px; touch-action:manipulation; display:block; margin:0 auto;
+  }
+  #banner{
+    font-size:2.1rem; font-weight:bold; padding:14px 10px; min-height:1.5em;
+  }
+  #controls{
+    display:flex; flex-wrap:wrap; gap:14px; justify-content:center;
+    align-items:center; margin:16px 0 4px;
+  }
+  /* the one big primary action */
+  #btnRoll{
+    font-family:inherit; font-size:1.9rem; font-weight:bold; color:#fff;
+    background:var(--good); border:none; border-radius:14px; cursor:pointer;
+    padding:20px 46px; box-shadow:0 5px 0 #2c7d40; flex-basis:100%;
+    max-width:520px;
+  }
+  #btnRoll:active{transform:translateY(2px); box-shadow:0 2px 0 #2c7d40;}
+  #btnRoll:disabled{opacity:.35; cursor:default;}
+  /* secondary, smaller buttons */
+  .ctrl{
+    font-family:inherit; font-size:1.15rem; font-weight:bold;
+    border:none; border-radius:10px; padding:12px 22px; cursor:pointer;
+    color:#1f2a33; background:#cdbf9f; box-shadow:0 3px 0 #8d8266;
+  }
+  .ctrl:active{transform:translateY(2px); box-shadow:0 1px 0 #8d8266;}
+  .ctrl:disabled{opacity:.35; cursor:default; box-shadow:0 3px 0 #8d8266;}
+  #toast{
+    position:fixed; left:50%; top:14px; transform:translateX(-50%);
+    background:#000a; color:#fff; padding:10px 18px; border-radius:10px;
+    font-size:1.1rem; opacity:0; transition:opacity .25s; pointer-events:none;
+    z-index:50; max-width:90%;
+  }
+  #toast.show{opacity:1;}
+  label.toggle{font-size:1rem; color:#cdbf9f; cursor:pointer; user-select:none;}
+  .swatch{display:inline-block; width:14px; height:14px; border-radius:50%;
+    vertical-align:middle; border:2px solid #000; margin:0 3px;}
+</style>
+</head>
+<body>
+
+<div id="toast"></div>
+
+<!-- ===================== START MENU ===================== -->
+<div id="menu">
+  <h1>Mahbus &nbsp;·&nbsp; <span style="font-family:serif">محبوس</span></h1>
+  <p class="sub">The classic Middle-Eastern game of "the imprisoned" &mdash; a cousin of backgammon.</p>
+  <div class="rules">
+    <p><b>The idea.</b> Both players start with all 15 pieces stacked in opposite far
+    corners and race them home in opposite directions, then bear them off the board.
+    First to bear off all 15 wins.</p>
+    <p><b>The twist (mahbus = "imprisoned").</b> There is no bar. If you land a piece
+    on a single enemy piece, you sit on top and <b>trap</b> it. A trapped piece is frozen
+    and cannot move until you lift your piece(s) off it. A point held by 2 or more enemy
+    pieces is blocked &mdash; you cannot land there.</p>
+    <p><b>On your turn.</b> Roll the dice and move one piece per die (doubles give you
+    four moves). Click a piece to see its legal moves highlighted, then click where to go.</p>
+  </div>
+  <button class="bigbtn" onclick="startGame('ai')">Play vs Computer</button>
+  <button class="bigbtn alt" onclick="startGame('hotseat')">Two Players</button>
+</div>
+
+<!-- ===================== GAME ===================== -->
+<div id="game">
+  <div id="banner">&nbsp;</div>
+  <canvas id="board" width="960" height="620"></canvas>
+  <div id="controls">
+    <button id="btnRoll" onclick="onRoll()">🎲 Roll the Dice</button>
+    <button id="btnUndo" class="ctrl" onclick="onUndo()">↩ Undo</button>
+    <button id="btnNew"  class="ctrl" onclick="startGame(STATE.mode)">New Game</button>
+    <button id="btnMenu" class="ctrl" onclick="toMenu()">Menu</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* =========================================================================
+   MAHBUS  (Mahbusa) — Plakoto-family backgammon variant
+   Single-file vanilla JS. No external dependencies.
+
+   Board model: points[1..24]. Each point:
+       { top:'W'|'B'|null, count:int, trapped:'W'|'B'|null }
+   A point may hold one player's stack on top (top/count) and, beneath it,
+   one frozen ("imprisoned") enemy checker (trapped).
+
+   Direction of travel:
+       White: 24 -> 1, home = 1..6, bears off below 1.  Starts on point 24.
+       Black:  1 -> 24, home = 19..24, bears off above 24. Starts on point 1.
+   ========================================================================= */
+
+const HUMAN = 'W';           // in vs-Computer mode the human is White
+const AI    = 'B';
+
+let STATE = null;
+let SELECTED = null;         // point currently picked up (human)
+let HISTORY = [];            // undo snapshots for the current turn
+let AI_BUSY = false;
+
+/* ---------- small helpers ---------- */
+const opp = p => (p === 'W' ? 'B' : 'W');
+const inHome = (p, i) => (p === 'W' ? (i >= 1 && i <= 6) : (i >= 19 && i <= 24));
+const destFor = (p, from, d) => (p === 'W' ? from - d : from + d); // <1 or >24 => off
+const clone = s => (typeof structuredClone === 'function' ? structuredClone(s) : JSON.parse(JSON.stringify(s)));
+
+function newBoard(){
+  const pts = [];
+  for (let i = 0; i <= 24; i++) pts.push({ top:null, count:0, trapped:null });
+  pts[24] = { top:'W', count:15, trapped:null };
+  pts[1]  = { top:'B', count:15, trapped:null };
+  return pts;
+}
+
+function startGame(mode){
+  STATE = {
+    points: newBoard(),
+    off: { W:0, B:0 },
+    current: 'W',
+    dicePool: [],            // [{v, used}]
+    rolled: false,
+    mode: mode,              // 'ai' | 'hotseat'
+    phase: 'await',          // 'await' (need roll) | 'move' | 'over'
+    winner: null,
+  };
+  SELECTED = null;
+  HISTORY = [];
+  AI_BUSY = false;
+  document.getElementById('menu').style.display = 'none';
+  document.getElementById('game').style.display = 'block';
+  draw();
+  updateUI();
+}
+
+function toMenu(){
+  document.getElementById('game').style.display = 'none';
+  document.getElementById('menu').style.display = 'block';
+}
+
+/* =========================================================================
+   RULES
+   ========================================================================= */
+
+function canLandOn(pt, p){
+  if (pt.top === null) return true;          // empty
+  if (pt.top === p)   return true;           // own stack
+  if (pt.count === 1 && pt.trapped === null) return true; // lone enemy -> trap it
+  return false;                              // 2+ enemy, or already-occupied trap stack
+}
+
+function canBearOff(st, p){
+  // every checker of p must be in p's home AND none of p's checkers trapped
+  for (let i = 1; i <= 24; i++){
+    const pt = st.points[i];
+    if (pt.trapped === p) return false;             // a frozen checker blocks bearing off
+    if (pt.top === p && !inHome(p, i)) return false; // a checker still outside home
+  }
+  return true;
+}
+
+// only called when destFor() leaves the board
+function bearOffOK(st, p, from, d){
+  if (!canBearOff(st, p)) return false;
+  const dist = (p === 'W' ? from : 25 - from); // pips needed to bear this one off
+  if (d === dist) return true;                 // exact
+  if (d > dist){                               // overshoot: only if nothing further back
+    if (p === 'W'){ for (let i = from + 1; i <= 6;  i++) if (st.points[i].top === 'W') return false; }
+    else          { for (let i = from - 1; i >= 19; i--) if (st.points[i].top === 'B') return false; }
+    return true;
+  }
+  return false; // d < dist would be an on-board move, not a bear-off
+}
+
+function unusedValues(st){
+  const vals = [];
+  for (const d of st.dicePool) if (!d.used && !vals.includes(d.v)) vals.push(d.v);
+  return vals;
+}
+
+// all legal single-checker moves for the side to move, given remaining dice
+function legalMoves(st, p){
+  const moves = [];
+  const vals = unusedValues(st);
+  for (let from = 1; from <= 24; from++){
+    const pt = st.points[from];
+    if (pt.top !== p || pt.count < 1) continue; // can only move your own TOP checkers
+    for (const d of vals){
+      const to = destFor(p, from, d);
+      if (to >= 1 && to <= 24){
+        if (canLandOn(st.points[to], p)) moves.push({ from, to, die:d });
+      } else {
+        if (bearOffOK(st, p, from, d)) moves.push({ from, to:'off', die:d });
+      }
+    }
+  }
+  return moves;
+}
+
+// mutate st by applying a move; marks one matching die used
+function applyMove(st, m){
+  const p = st.current;
+  const src = st.points[m.from];
+  src.count--;
+  if (src.count === 0){
+    if (src.trapped !== null){ src.top = src.trapped; src.count = 1; src.trapped = null; } // free prisoner
+    else src.top = null;
+  }
+  if (m.to === 'off'){
+    st.off[p]++;
+  } else {
+    const dst = st.points[m.to];
+    if (dst.top === null){ dst.top = p; dst.count = 1; }
+    else if (dst.top === p){ dst.count++; }
+    else { dst.trapped = dst.top; dst.top = p; dst.count = 1; } // imprison the lone enemy
+  }
+  const die = st.dicePool.find(x => !x.used && x.v === m.die);
+  if (die) die.used = true;
+  if (st.off[p] === 15){ st.phase = 'over'; st.winner = p; }
+}
+
+function pipCount(st, p){
+  let pips = 0;
+  for (let i = 1; i <= 24; i++){
+    const pt = st.points[i];
+    const d = (p === 'W' ? i : 25 - i);
+    if (pt.top === p) pips += d * pt.count;
+    if (pt.trapped === p) pips += d;
+  }
+  return pips;
+}
+
+/* =========================================================================
+   TURN FLOW
+   ========================================================================= */
+
+function onRoll(){
+  if (!STATE || STATE.phase !== 'await' || AI_BUSY) return;
+  rollFor(STATE.current);
+  STATE.phase = 'move';
+  HISTORY = [];
+  if (legalMoves(STATE, STATE.current).length === 0){
+    toast('No legal moves — turn passes.');
+    draw(); updateUI();
+    setTimeout(endTurn, 1100);
+    return;
+  }
+  draw(); updateUI();
+}
+
+function rollFor(){
+  const a = 1 + Math.floor(Math.random() * 6);
+  const b = 1 + Math.floor(Math.random() * 6);
+  STATE.dicePool = (a === b)
+    ? [a,a,a,a].map(v => ({ v, used:false }))
+    : [a,b].map(v => ({ v, used:false }));
+  STATE.rolled = true;
+}
+
+function humanMove(m){
+  HISTORY.push(clone(STATE));
+  applyMove(STATE, m);
+  SELECTED = null;
+  draw(); updateUI();
+  if (STATE.phase === 'over'){ announceWin(); return; }
+  if (legalMoves(STATE, STATE.current).length === 0){
+    if (unusedValues(STATE).length > 0) toast('No more moves possible.');
+    setTimeout(endTurn, 700);
+  }
+}
+
+function onUndo(){
+  if (HISTORY.length === 0 || AI_BUSY) return;
+  STATE = HISTORY.pop();
+  SELECTED = null;
+  draw(); updateUI();
+}
+
+function endTurn(){
+  if (!STATE || STATE.phase === 'over') return;
+  STATE.current = opp(STATE.current);
+  STATE.dicePool = [];
+  STATE.rolled = false;
+  STATE.phase = 'await';
+  SELECTED = null;
+  HISTORY = [];
+  draw(); updateUI();
+  if (STATE.mode === 'ai' && STATE.current === AI) setTimeout(aiTurn, 650);
+}
+
+function announceWin(){
+  draw(); updateUI();
+  const who = STATE.winner === HUMAN && STATE.mode === 'ai' ? 'You win! 🎉'
+            : (STATE.winner === 'W' ? 'White wins! 🎉' : 'Black wins! 🎉');
+  toast(who, 4000);
+}
+
+/* =========================================================================
+   AI  (simple 1-turn heuristic search; AI plays Black)
+   ========================================================================= */
+
+function scoreState(st){
+  // from Black's perspective; higher is better
+  let trappedOpp = 0, trappedByOpp = 0, myBlots = 0;
+  for (let i = 1; i <= 24; i++){
+    const pt = st.points[i];
+    if (pt.trapped === 'W') trappedOpp++;      // I (Black) am sitting on a White prisoner
+    if (pt.trapped === 'B') trappedByOpp++;
+    if (pt.top === 'B' && pt.count === 1 && pt.trapped === null){
+      // exposed if a White checker is 1..6 pips "behind" (White moves downward)
+      for (let k = i + 1; k <= Math.min(24, i + 6); k++)
+        if (st.points[k].top === 'W'){ myBlots++; break; }
+    }
+  }
+  const race = pipCount(st, 'W') - pipCount(st, 'B');
+  return race
+       + (trappedOpp - trappedByOpp) * 26
+       + (st.off.B - st.off.W) * 30
+       - myBlots * 8;
+}
+
+function sig(st){
+  let s = st.off.B + ',' + st.off.W + '|';
+  for (let i = 1; i <= 24; i++){
+    const pt = st.points[i];
+    s += (pt.top || '_') + pt.count + (pt.trapped || '_') + ';';
+  }
+  s += '#' + st.dicePool.filter(d => d.used).length;
+  return s;
+}
+
+function aiBestSequence(start){
+  let best = { score:-Infinity, seq:[] };
+  const seen = new Set();
+  let nodes = 0;
+  (function rec(st, seq){
+    if (++nodes > 60000) return; // safety bound
+    const moves = legalMoves(st, 'B');
+    if (moves.length === 0){
+      const sc = scoreState(st) + seq.length * 0.6; // prefer using more dice
+      if (sc > best.score) best = { score:sc, seq:seq.slice() };
+      return;
+    }
+    for (const m of moves){
+      const ns = clone(st);
+      applyMove(ns, m);
+      const k = sig(ns);
+      if (seen.has(k)) continue;  // collapse equivalent dice orderings
+      seen.add(k);
+      rec(ns, seq.concat(m));
+      if (ns.phase === 'over'){ // a winning line is as good as it gets
+        const sc = scoreState(ns) + 10000;
+        if (sc > best.score) best = { score:sc, seq:seq.concat(m) };
+      }
+    }
+  })(clone(start), []);
+  return best.seq;
+}
+
+function aiTurn(){
+  if (!STATE || STATE.phase === 'over') return;
+  AI_BUSY = true;
+  rollFor(AI);
+  STATE.phase = 'move';
+  draw(); updateUI();
+
+  const seq = aiBestSequence(STATE);
+  if (seq.length === 0){
+    toast('Computer has no move.');
+    setTimeout(() => { AI_BUSY = false; endTurn(); }, 1100);
+    return;
+  }
+  let i = 0;
+  (function step(){
+    if (i >= seq.length || STATE.phase === 'over'){
+      AI_BUSY = false;
+      if (STATE.phase === 'over') announceWin();
+      else setTimeout(endTurn, 600);
+      return;
+    }
+    applyMove(STATE, seq[i++]);
+    draw(); updateUI();
+    setTimeout(step, 750);
+  })();
+}
+
+/* =========================================================================
+   GEOMETRY  /  RENDERING
+   ========================================================================= */
+
+const cv = document.getElementById('board');
+const ctx = cv.getContext('2d');
+const W = cv.width, H = cv.height;
+const M = 16, TRAY = 74, BAR = 40;
+const boardL = M, boardR = W - M - TRAY, boardT = M, boardB = H - M;
+const quadW = (boardR - boardL - BAR) / 2;
+const slotW = quadW / 6;
+const R = slotW * 0.42;               // checker radius
+const ptLen = (boardB - boardT) / 2 - 8;
+const trayL = boardR + 6, trayR = W - M;
+
+const colForPoint = p => (p <= 12 ? 12 - p : p - 13);   // 0..11 left->right
+const isBottom = p => p <= 12;
+function pointFromColRow(col, bottom){ return bottom ? (12 - col) : (13 + col); }
+
+function xForCol(c){
+  return c <= 5
+    ? boardL + slotW * (c + 0.5)
+    : boardL + quadW + BAR + slotW * (c - 6 + 0.5);
+}
+
+function colFromX(x){
+  if (x >= boardL && x < boardL + quadW) return Math.floor((x - boardL) / slotW);          // 0..5
+  if (x > boardL + quadW + BAR && x <= boardR) return 6 + Math.floor((x - (boardL + quadW + BAR)) / slotW); // 6..11
+  return -1; // bar / outside
+}
+
+function draw(){
+  ctx.clearRect(0, 0, W, H);
+  // outer frame
+  ctx.fillStyle = '#5b3618';
+  ctx.fillRect(0, 0, W, H);
+  // felt
+  ctx.fillStyle = '#0f5132';
+  ctx.fillRect(boardL, boardT, boardR - boardL, boardB - boardT);
+  // bar
+  ctx.fillStyle = '#5b3618';
+  ctx.fillRect(boardL + quadW, boardT, BAR, boardB - boardT);
+  // bear-off tray
+  ctx.fillStyle = '#2a1c10';
+  ctx.fillRect(trayL, boardT, trayR - trayL, boardB - boardT);
+
+  const sel = SELECTED;
+  const hints = STATE && STATE.phase === 'move' && !AI_BUSY; // legal moves always highlighted
+  const human = STATE && (STATE.mode === 'hotseat' || STATE.current === HUMAN);
+  let dests = [];
+  if (sel !== null && STATE) dests = legalMoves(STATE, STATE.current).filter(m => m.from === sel);
+
+  // triangles
+  for (let p = 1; p <= 24; p++){
+    const c = colForPoint(p), x = xForCol(c), bottom = isBottom(p);
+    const dark = (c % 2 === 0);
+    ctx.fillStyle = dark ? '#caa472' : '#9c6b3a';
+    ctx.beginPath();
+    if (bottom){
+      ctx.moveTo(x - slotW * 0.46, boardB);
+      ctx.lineTo(x + slotW * 0.46, boardB);
+      ctx.lineTo(x, boardB - ptLen);
+    } else {
+      ctx.moveTo(x - slotW * 0.46, boardT);
+      ctx.lineTo(x + slotW * 0.46, boardT);
+      ctx.lineTo(x, boardT + ptLen);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // highlight legal destination points / tray
+  if (hints && human){
+    for (const m of dests){
+      if (m.to === 'off'){
+        ctx.strokeStyle = '#ffe08a'; ctx.lineWidth = 5;
+        ctx.strokeRect(trayL + 3, boardT + 3, trayR - trayL - 6, boardB - boardT - 6);
+      } else {
+        drawDestMarker(m.to);
+      }
+    }
+  }
+
+  // checkers
+  for (let p = 1; p <= 24; p++) drawStack(p);
+
+  // borne-off pieces in the tray
+  drawOffTray();
+
+  // selected source ring
+  if (sel !== null){
+    const c = colForPoint(sel), x = xForCol(c), bottom = isBottom(sel);
+    const cy = bottom ? boardB - R - 1 : boardT + R + 1;
+    ctx.strokeStyle = '#ffe08a'; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.arc(x, cy, R + 4, 0, 7); ctx.stroke();
+  }
+
+  drawDice();
+}
+
+function drawDestMarker(p){
+  const c = colForPoint(p), x = xForCol(c), bottom = isBottom(p);
+  const pt = STATE.points[p];
+  const n = pt.top === STATE.current ? pt.count : 0;
+  const cy = checkerY(bottom, n);
+  ctx.fillStyle = 'rgba(255,224,138,0.55)';
+  ctx.strokeStyle = '#3fae5a'; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.arc(x, cy, R - 2, 0, 7); ctx.fill(); ctx.stroke();
+}
+
+function checkerY(bottom, i){
+  const step = Math.min(2 * R * 0.92, (ptLen - R) / 4.5);
+  return bottom ? (boardB - R - 4 - i * step) : (boardT + R + 4 + i * step);
+}
+
+function drawStack(p){
+  const pt = STATE.points[p];
+  if (pt.top === null && pt.trapped === null) return;
+  const c = colForPoint(p), x = xForCol(c), bottom = isBottom(p);
+
+  // trapped (imprisoned) checker peeks out from the base
+  if (pt.trapped !== null){
+    const baseY = bottom ? boardB - R - 4 + R * 0.7 : boardT + R + 4 - R * 0.7;
+    drawChecker(x, baseY, pt.trapped, R * 0.92, true);
+  }
+
+  const count = pt.top ? pt.count : 0;
+  const shown = Math.min(count, 5);
+  for (let i = 0; i < shown; i++) drawChecker(x, checkerY(bottom, i), pt.top, R, false);
+  if (count > 5){
+    const cy = checkerY(bottom, shown - 1);
+    ctx.fillStyle = '#1f2a33'; ctx.font = `bold ${Math.round(R)}px Georgia`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(count), x, cy);
+  }
+}
+
+function drawChecker(x, y, owner, r, locked){
+  const white = owner === 'W';
+  const grad = ctx.createRadialGradient(x - r*0.3, y - r*0.3, r*0.2, x, y, r);
+  if (white){ grad.addColorStop(0, '#fffdf5'); grad.addColorStop(1, '#d9c79a'); }
+  else      { grad.addColorStop(0, '#4a4a4a'); grad.addColorStop(1, '#161616'); }
+  ctx.fillStyle = grad;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  ctx.lineWidth = 2; ctx.strokeStyle = white ? '#7a6a3a' : '#000';
+  ctx.stroke();
+  // inner ring
+  ctx.lineWidth = 1.5; ctx.strokeStyle = white ? '#c9b783' : '#3a3a3a';
+  ctx.beginPath(); ctx.arc(x, y, r * 0.62, 0, 7); ctx.stroke();
+  if (locked){
+    ctx.fillStyle = '#d2553f'; ctx.font = `bold ${Math.round(r*0.9)}px serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('🔒', x, y);
+  }
+}
+
+function drawOffTray(){
+  const cx = (trayL + trayR) / 2, r = (trayR - trayL) / 2 - 6;
+  // White borne off at bottom, Black at top
+  for (let i = 0; i < STATE.off.W; i++){
+    const y = boardB - 8 - i * 8;
+    bar(cx, y, r, 'W');
+  }
+  for (let i = 0; i < STATE.off.B; i++){
+    const y = boardT + 8 + i * 8;
+    bar(cx, y, r, 'B');
+  }
+  function bar(cx, y, r, owner){
+    ctx.fillStyle = owner === 'W' ? '#e7d8ab' : '#222';
+    ctx.fillRect(cx - r, y - 5, r * 2, 6);
+    ctx.strokeStyle = owner === 'W' ? '#8d8266' : '#000'; ctx.lineWidth = 1;
+    ctx.strokeRect(cx - r, y - 5, r * 2, 6);
+  }
+}
+
+function drawDice(){
+  if (!STATE.rolled || STATE.dicePool.length === 0) return;
+  const cx = boardL + quadW + BAR / 2;
+  const side = BAR - 12, gap = side + 8;
+  const n = STATE.dicePool.length;
+  let y0 = (boardT + boardB) / 2 - (n * gap - 8) / 2;
+  for (let k = 0; k < n; k++){
+    const d = STATE.dicePool[k];
+    const x = cx - side / 2, y = y0 + k * gap;
+    ctx.fillStyle = d.used ? '#6b6b6b' : '#f7f3e7';
+    roundRect(x, y, side, side, 7); ctx.fill();
+    ctx.strokeStyle = '#222'; ctx.lineWidth = 1.5; roundRect(x, y, side, side, 7); ctx.stroke();
+    drawPips(x, y, side, d.v, d.used);
+  }
+}
+
+function drawPips(x, y, s, v, used){
+  ctx.fillStyle = used ? '#999' : '#1c1c1c';
+  const u = s / 4, c = [
+    [], [[2,2]], [[1,1],[3,3]], [[1,1],[2,2],[3,3]],
+    [[1,1],[3,1],[1,3],[3,3]], [[1,1],[3,1],[2,2],[1,3],[3,3]],
+    [[1,1],[3,1],[1,2],[3,2],[1,3],[3,3]]
+  ][v];
+  for (const [a,b] of c){
+    ctx.beginPath(); ctx.arc(x + a*u, y + b*u, s*0.09, 0, 7); ctx.fill();
+  }
+}
+
+function roundRect(x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.arcTo(x+w, y, x+w, y+h, r); ctx.arcTo(x+w, y+h, x, y+h, r);
+  ctx.arcTo(x, y+h, x, y, r);     ctx.arcTo(x, y, x+w, y, r);
+  ctx.closePath();
+}
+
+/* =========================================================================
+   CLICK INPUT
+   ========================================================================= */
+
+cv.addEventListener('click', e => {
+  if (!STATE || STATE.phase !== 'move' || AI_BUSY) return;
+  if (STATE.mode === 'ai' && STATE.current !== HUMAN) return;
+
+  const rect = cv.getBoundingClientRect();
+  const x = (e.clientX - rect.left) * (W / rect.width);
+  const y = (e.clientY - rect.top)  * (H / rect.height);
+
+  // bear-off tray click
+  if (x >= trayL && SELECTED !== null){
+    const m = legalMoves(STATE, STATE.current)
+      .filter(mm => mm.from === SELECTED && mm.to === 'off')
+      .sort((a,b) => a.die - b.die)[0];
+    if (m){ humanMove(m); return; }
+  }
+
+  const col = colFromX(x);
+  if (col < 0){ SELECTED = null; draw(); return; }
+  const bottom = y > H / 2;
+  const p = pointFromColRow(col, bottom);
+
+  if (SELECTED !== null){
+    const m = legalMoves(STATE, STATE.current).find(mm => mm.from === SELECTED && mm.to === p);
+    if (m){ humanMove(m); return; }
+  }
+  // (re)select a source point that holds one of the current player's checkers
+  const pt = STATE.points[p];
+  if (pt.top === STATE.current && pt.count >= 1){
+    SELECTED = (SELECTED === p ? null : p);
+  } else {
+    SELECTED = null;
+  }
+  draw();
+});
+
+/* =========================================================================
+   UI / STATUS
+   ========================================================================= */
+
+function updateUI(){
+  if (!STATE) return;
+  const banner = document.getElementById('banner');
+  const name = STATE.current === 'W' ? 'White' : 'Black';
+  if (STATE.phase === 'over'){
+    const w = STATE.winner === 'W' ? 'White' : 'Black';
+    banner.textContent = (STATE.mode === 'ai' && STATE.winner === HUMAN) ? '🎉 You win!' : `🎉 ${w} wins!`;
+  } else if (STATE.mode === 'ai' && STATE.current === AI){
+    banner.textContent = '🤖 Computer is thinking…';
+  } else if (STATE.phase === 'await'){
+    banner.textContent = `${name} — roll the dice`;
+  } else {
+    banner.textContent = `${name} — your move`;
+  }
+  banner.style.color = STATE.current === 'W' ? '#f4ead2' : '#cdcdcd';
+
+  const isHumanTurn = STATE.mode === 'hotseat' || STATE.current === HUMAN;
+  document.getElementById('btnRoll').disabled = !(STATE.phase === 'await' && isHumanTurn && !AI_BUSY);
+  document.getElementById('btnUndo').disabled = !(HISTORY.length > 0 && isHumanTurn && !AI_BUSY);
+}
+
+let toastTimer = null;
+function toast(msg, ms = 1800){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), ms);
+}
+</script>
+</body>
+</html>
