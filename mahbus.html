@@ -29,12 +29,13 @@
   .flourish{color:#c9a43c; font-size:1.7rem; letter-spacing:.5em; margin:.1em 0 .3em;}
   /* gold plaque shown above the board on the playing screen */
   #gametitle{
-    margin:4px auto 8px; padding:10px 22px; display:inline-block; border-radius:12px;
-    color:#e9c46a; font-size:1.9rem; font-weight:bold;
+    margin:2px auto 4px; padding:clamp(4px,1vw,10px) clamp(10px,2vw,22px);
+    display:inline-block; border-radius:12px; line-height:1.2;
+    color:#e9c46a; font-size:clamp(.95rem,3.4vw,1.9rem); font-weight:bold;
     border:1px solid rgba(201,164,60,.55); background:rgba(201,164,60,.08);
     box-shadow:0 0 0 3px rgba(201,164,60,.18);
   }
-  #gametitle .fa{font-size:1.4rem; opacity:.9; font-weight:normal;}
+  #gametitle .fa{font-size:clamp(.75rem,2.4vw,1.4rem); opacity:.9; font-weight:normal;}
   /* win celebration card */
   #wincard{
     position:fixed; left:50%; top:42%; transform:translate(-50%,-50%) scale(.9);
@@ -58,7 +59,8 @@
   .dedication .ded-fa{font-size:1.5rem; opacity:.95;}
   .dedication .ded-orn{color:#c9a43c; letter-spacing:.4em; font-size:1.2rem;}
   .ded-foot{
-    margin:16px auto 0; color:#c9a43c; font-size:1.2rem; line-height:1.7; opacity:.9;
+    margin:6px auto 0; color:#c9a43c; font-size:clamp(.7rem,2.3vw,1.2rem);
+    line-height:1.5; opacity:.9;
   }
   /* play screen fills the viewport; the board auto-sizes to leftover space */
   #game{
@@ -98,29 +100,41 @@
     /* exact width/height are set by fitGameCanvas() */
   }
   #banner{
-    font-size:2.4rem; font-weight:bold; padding:6px 10px; min-height:1.2em;
+    font-size:clamp(1.25rem,4.6vw,2.4rem); font-weight:bold;
+    padding:4px 10px; min-height:1.1em; line-height:1.15;
   }
   #controls{
-    display:flex; flex-wrap:wrap; gap:12px; justify-content:center;
-    align-items:center; margin:8px 0 2px;
+    display:flex; flex-wrap:wrap; gap:clamp(6px,1.5vw,12px); justify-content:center;
+    align-items:center; margin:6px 0 2px;
   }
   /* the one big primary action */
   #btnRoll{
-    font-family:inherit; font-size:2.5rem; font-weight:bold; color:#fff;
+    font-family:inherit; font-size:clamp(1.2rem,4.6vw,2.5rem); font-weight:bold; color:#fff;
     background:var(--good); border:none; border-radius:16px; cursor:pointer;
-    padding:26px 54px; box-shadow:0 6px 0 #2c7d40; flex-basis:100%;
-    max-width:680px;
+    padding:clamp(12px,2.4vw,26px) clamp(20px,5vw,54px); box-shadow:0 6px 0 #2c7d40;
+    flex-basis:100%; max-width:680px; white-space:nowrap;
   }
   #btnRoll:active{transform:translateY(2px); box-shadow:0 2px 0 #2c7d40;}
   #btnRoll:disabled{opacity:.35; cursor:default;}
   /* secondary buttons */
   .ctrl{
-    font-family:inherit; font-size:1.55rem; font-weight:bold;
-    border:none; border-radius:12px; padding:16px 30px; cursor:pointer;
+    font-family:inherit; font-size:clamp(.95rem,3.2vw,1.55rem); font-weight:bold;
+    border:none; border-radius:12px; padding:clamp(9px,1.8vw,16px) clamp(12px,3vw,30px);
+    cursor:pointer; white-space:nowrap;
     color:#1f2a33; background:#cdbf9f; box-shadow:0 4px 0 #8d8266;
   }
   .ctrl:active{transform:translateY(2px); box-shadow:0 1px 0 #8d8266;}
   .ctrl:disabled{opacity:.35; cursor:default; box-shadow:0 3px 0 #8d8266;}
+  /* phones: tighten everything so the board + buttons all fit, no scroll */
+  @media (max-width:600px){
+    #game{padding:4px 4px; gap:1px;}
+    #gametitle{margin:1px auto 2px; border-width:1px;}
+    #gametitle .fa{display:none;}        /* drop the Persian sub-line on tiny screens */
+    #banner{padding:2px 6px;}
+    #btnRoll .hint{display:none;}         /* no spacebar on a phone */
+    #controls{gap:6px; margin:4px 0 2px;}
+    .ded-foot{margin:3px auto 0;}
+  }
   #toast{
     position:fixed; left:50%; top:14px; transform:translateX(-50%);
     background:#000a; color:#fff; padding:10px 18px; border-radius:10px;
@@ -219,64 +233,118 @@ const inHome = (p, i) => (p === 'W' ? (i >= 1 && i <= 6) : (i >= 19 && i <= 24))
 const destFor = (p, from, d) => (p === 'W' ? from - d : from + d); // <1 or >24 => off
 const clone = s => (typeof structuredClone === 'function' ? structuredClone(s) : JSON.parse(JSON.stringify(s)));
 
-/* ---------- sound (synthesized via Web Audio, no files = stays offline) ---------- */
+/* ---------- sound: synthesized Persian instruments (no audio files = offline) ----------
+   • santur (hammered dulcimer) via Karplus–Strong plucked-string synthesis
+   • tombak (goblet drum) + daf (frame drum) for the dice
+   • a generated reverb + compressor for a warm, "live room" feel
+   • notes tuned to the Persian Shur mode on D, incl. the quarter-tone "koron"   */
 const Sound = (function(){
-  let ctx = null, enabled = true;
+  let ctx = null, enabled = true, master = null, reverb = null;
   function ac(){
-    if (!ctx){ const AC = window.AudioContext || window.webkitAudioContext; if (AC) ctx = new AC(); }
-    if (ctx && ctx.state === 'suspended') ctx.resume();
+    if (!ctx){
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      ctx = new AC();
+      const comp = ctx.createDynamicsCompressor();   // keep it smooth, no clipping
+      comp.threshold.value = -14; comp.ratio.value = 3; comp.knee.value = 18;
+      master = ctx.createGain(); master.gain.value = 0.85;
+      master.connect(comp); comp.connect(ctx.destination);
+      reverb = ctx.createConvolver(); reverb.buffer = makeIR(2.4, 2.6);
+      const rev = ctx.createGain(); rev.gain.value = 0.22;
+      reverb.connect(rev); rev.connect(master);
+      reverb._send = rev;
+    }
+    if (ctx.state === 'suspended') ctx.resume();
     return ctx;
   }
-  function tone(freq, t0, dur, type, peak){
-    const c = ac(); if (!c) return;
-    const o = c.createOscillator(), g = c.createGain();
-    o.type = type || 'sine'; o.frequency.setValueAtTime(freq, t0);
-    g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(peak || 0.2, t0 + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    o.connect(g).connect(c.destination);
-    o.start(t0); o.stop(t0 + dur + 0.02);
+  function makeIR(seconds, decay){
+    const rate = ctx.sampleRate, len = Math.floor(rate * seconds);
+    const buf = ctx.createBuffer(2, len, rate);
+    for (let ch = 0; ch < 2; ch++){
+      const d = buf.getChannelData(ch);
+      for (let i = 0; i < len; i++) d[i] = (Math.random()*2 - 1) * Math.pow(1 - i/len, decay);
+    }
+    return buf;
   }
-  // a short "tok" — noise burst through a resonant band-pass = a wooden knock
-  function knock(t0, freq, dur, peak, q){
+  function route(node, send){                         // dry to master + a wet send to reverb
+    node.connect(master);
+    if (send > 0){ const g = ctx.createGain(); g.gain.value = send; node.connect(g); g.connect(reverb); }
+  }
+  // Karplus–Strong plucked/struck string — the santur voice
+  function pluck(freq, t0, dur, peak, bright, send){
     const c = ac(); if (!c) return;
-    const n = Math.max(1, Math.floor(c.sampleRate * dur));
-    const buf = c.createBuffer(1, n, c.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < n; i++) d[i] = (Math.random()*2 - 1) * Math.pow(1 - i/n, 2); // sharp attack, quick decay
+    const rate = c.sampleRate, len = Math.floor(rate * dur), N = Math.max(2, Math.round(rate / freq));
+    const buf = c.createBuffer(1, len, rate), d = buf.getChannelData(0);
+    for (let i = 0; i < N; i++) d[i] = Math.random()*2 - 1;            // excite the string
+    for (let i = N; i < len; i++) d[i] = (d[i-N] + d[i-N+1]) * 0.4985; // gentle natural decay
     const src = c.createBufferSource(); src.buffer = buf;
-    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = freq; bp.Q.value = q || 6;
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = bright || 3200;
     const g = c.createGain();
-    g.gain.setValueAtTime(peak || 0.3, t0);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(peak, t0 + 0.006);
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    src.connect(bp).connect(g).connect(c.destination);
-    src.start(t0); src.stop(t0 + dur + 0.03);
+    src.connect(lp); lp.connect(g); route(g, send == null ? 0.4 : send);
+    src.start(t0); src.stop(t0 + dur + 0.05);
   }
+  // a santur note = two slightly detuned courses (like the real instrument's paired strings)
+  function note(freq, t0, dur, peak, bright, send){
+    pluck(freq, t0, dur, peak, bright, send);
+    pluck(freq * 1.0035, t0, dur, peak * 0.7, bright, send);
+  }
+  function tom(t0, peak){                              // tombak bass "tom"
+    const c = ac(); if (!c) return;
+    const o = c.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(190, t0); o.frequency.exponentialRampToValueAtTime(72, t0 + 0.16);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(peak || 0.5, t0 + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.34);
+    o.connect(g); route(g, 0.12); o.start(t0); o.stop(t0 + 0.38);
+  }
+  function tek(t0, peak, freq){                        // tombak rim "tek"
+    const c = ac(); if (!c) return;
+    const dur = 0.05, len = Math.floor(c.sampleRate * dur);
+    const buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random()*2 - 1) * Math.pow(1 - i/len, 3);
+    const src = c.createBufferSource(); src.buffer = buf;
+    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = freq || 2600; bp.Q.value = 1.6;
+    const g = c.createGain(); g.gain.value = peak || 0.3;
+    src.connect(bp); bp.connect(g); route(g, 0.18); src.start(t0);
+  }
+  function shimmer(t0, dur, peak){                     // daf jingles
+    const c = ac(); if (!c) return;
+    const len = Math.floor(c.sampleRate * dur), buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random()*2 - 1) * Math.pow(1 - i/len, 1.5);
+    const src = c.createBufferSource(); src.buffer = buf;
+    const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 5200;
+    const g = c.createGain(); g.gain.value = peak || 0.07;
+    src.connect(hp); hp.connect(g); route(g, 0.35); src.start(t0);
+  }
+  // Persian Shur mode on D (Ek = E "koron", a quarter-tone flat — the signature colour)
+  const S = { D:293.66, Ek:320.2, F:349.23, G:392.0, A:440.0, Bb:466.16, C:523.25, D2:587.33, F2:698.46, A2:880.0 };
+  const MOVE = [S.G, S.A, S.C, S.D2, S.F];             // a gentle melody emerges as you move
+
   return {
     unlock(){ ac(); },
     set(on){ enabled = on; },
     get enabled(){ return enabled; },
-    // dice tumbling and settling on a wooden board: scattered woody clacks
-    roll(){
-      if (!enabled){ return; } const c = ac(); if (!c) return;
-      let when = c.currentTime;
-      knock(when, 320, 0.10, 0.18, 2);               // low wooden "body" of the board
-      const hits = 6 + Math.floor(Math.random()*3);
-      for (let i = 0; i < hits; i++){
-        when += 0.045 + Math.random()*0.07;
-        knock(when, 1500 + Math.random()*1500, 0.045 + Math.random()*0.03,
-              0.14 + Math.random()*0.12, 5 + Math.random()*4);
-      }
-      knock(when + 0.13, 1700, 0.07, 0.24, 6);        // two final settling taps
-      knock(when + 0.21, 1250, 0.08, 0.20, 5);
-    },
-    move(){ if (!enabled) return; const c = ac(); if (!c) return; knock(c.currentTime, 900, 0.06, 0.16, 4); }, // soft wood tap
-    trap(){ if (!enabled) return; const c = ac(); if (!c) return;                                              // heavier capture
-            knock(c.currentTime, 430, 0.10, 0.30, 3.5); knock(c.currentTime + 0.05, 760, 0.07, 0.2, 5); },
-    off(){ if (!enabled) return; const c = ac(); if (!c) return;                                               // pleasant ding
-           tone(880, c.currentTime, 0.13, 'sine', 0.2); tone(1320, c.currentTime + 0.08, 0.16, 'sine', 0.16); },
-    win(){ if (!enabled) return; const c = ac(); if (!c) return;                                               // little fanfare
-           [523,659,784,1046].forEach((f,i) => tone(f, c.currentTime + i*0.14, 0.24, 'sine', 0.2)); },
+    move(){ if (!enabled) return; const c = ac(); if (!c) return;
+            note(MOVE[(Math.random()*MOVE.length)|0], c.currentTime, 0.85, 0.14, 3000, 0.45); },
+    roll(){ if (!enabled) return; const c = ac(); if (!c) return; const t = c.currentTime;   // tombak/daf flourish
+            shimmer(t, 0.45, 0.05);
+            tek(t, 0.22, 2800); tek(t+0.085, 0.17, 2400); tek(t+0.155, 0.2, 3000); tek(t+0.235, 0.15, 2300);
+            tom(t+0.33, 0.5); tek(t+0.42, 0.15, 2600); },
+    trap(){ if (!enabled) return; const c = ac(); if (!c) return; const t = c.currentTime;   // dramatic capture
+            tom(t, 0.5);
+            note(S.D,  t+0.02, 1.5, 0.16, 2400, 0.55);
+            note(S.Ek, t+0.04, 1.5, 0.11, 2400, 0.55); },                                     // tense koron dyad
+    off(){ if (!enabled) return; const c = ac(); if (!c) return; const t = c.currentTime;     // rising "coming home"
+           note(S.A, t, 0.7, 0.14, 3200, 0.5); note(S.C, t+0.10, 0.7, 0.14, 3200, 0.5); note(S.D2, t+0.20, 1.1, 0.16, 3400, 0.55); },
+    win(){ if (!enabled) return; const c = ac(); if (!c) return; const t = c.currentTime;     // santur flourish
+           const seq = [S.D, S.F, S.G, S.A, S.C, S.D2, S.A, S.D2];
+           const tm  = [0, .15, .29, .43, .60, .78, .98, 1.18];
+           seq.forEach((f,i) => note(f, t+tm[i], 1.5, 0.16, 3400, 0.5));
+           tom(t, 0.4); tom(t+0.78, 0.4); shimmer(t+0.78, 0.6, 0.06); },
   };
 })();
 
@@ -347,7 +415,7 @@ function fitGameCanvas(){
   const ratio = cv.width / cv.height;            // 960 / 620
   let w = Math.min(availW, availH * ratio);
   if (!(w > 0)) w = availW;
-  w = Math.max(240, w);
+  w = Math.max(200, w);
   cv.style.width = w + 'px';
   cv.style.height = (w / ratio) + 'px';
 }
