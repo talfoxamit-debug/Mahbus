@@ -359,7 +359,7 @@ function onRoll(){
 }
 
 /* ---------- dice roll animation ---------- */
-let ROLLING = false, ANIM_DICE = null, animTimer = null;
+let ROLLING = false, ANIM_DICE = null, animTimer = null, AI_HIGHLIGHT = null;
 function animateRoll(player, done){
   Sound.roll();
   ROLLING = true; STATE.rolled = false; STATE.dicePool = [];
@@ -605,23 +605,34 @@ function aiTurn(){
 
     if (seq.length === 0){
       toast('אין למחשב מהלך.');
-      setTimeout(() => { AI_BUSY = false; endTurn(); }, 1100);
+      setTimeout(() => { AI_BUSY = false; endTurn(); }, 1400);
       return;
     }
+    // Play the computer's moves SLOWLY and very visibly, so it's easy to follow:
+    //   1) ring the piece it's about to move (orange) and pause
+    //   2) make the move + ring where it landed (green) and pause
+    const SHOW_BEFORE = 1200;   // look at the piece that's about to move
+    const SHOW_AFTER  = 1600;   // look at where it went
     let i = 0;
-    (function step(){
+    function step(){
       if (i >= seq.length || STATE.phase === 'over'){
-        AI_BUSY = false;
+        AI_HIGHLIGHT = null; AI_BUSY = false;
         if (STATE.phase === 'over') announceWin();
-        else setTimeout(endTurn, 600);
+        else { draw(); setTimeout(endTurn, 800); }
         return;
       }
       const m = seq[i++];
-      playMoveSound(STATE, m);
-      applyMove(STATE, m);
+      AI_HIGHLIGHT = { from: m.from, to: null };   // "this is the piece I'll move"
       draw(); updateUI();
-      setTimeout(step, 750);
-    })();
+      setTimeout(() => {
+        playMoveSound(STATE, m);
+        applyMove(STATE, m);
+        AI_HIGHLIGHT = { from: m.from, to: m.to }; // "...and here is where it went"
+        draw(); updateUI();
+        setTimeout(step, SHOW_AFTER);
+      }, SHOW_BEFORE);
+    }
+    setTimeout(step, 900);   // let the dice result sink in before the first move
   });
 }
 
@@ -726,7 +737,27 @@ function draw(){
     }
   }
 
+  // computer's current move: ring the source (orange) and destination (green)
+  if (AI_HIGHLIGHT){
+    if (AI_HIGHLIGHT.from != null) drawPointRing(AI_HIGHLIGHT.from, '#e8902a');
+    if (AI_HIGHLIGHT.to   != null) drawPointRing(AI_HIGHLIGHT.to,   '#3fae5a');
+  }
+
   drawDice();
+}
+
+function drawPointRing(p, color){
+  if (p === 'off'){
+    ctx.strokeStyle = color; ctx.lineWidth = 7;
+    ctx.strokeRect(trayL + 3, boardT + 3, trayR - trayL - 6, boardB - boardT - 6);
+    return;
+  }
+  const c = colForPoint(p), x = xForCol(c), bottom = isBottom(p);
+  const pt = STATE.points[p];
+  const n = pt.top ? Math.max(0, pt.count - 1) : 0;   // top checker of the stack
+  const cy = checkerY(bottom, n);
+  ctx.strokeStyle = color; ctx.lineWidth = 7;
+  ctx.beginPath(); ctx.arc(x, cy, R + 7, 0, 7); ctx.stroke();
 }
 
 function drawMovableGlow(p){
