@@ -146,6 +146,19 @@
     .ctrl{font-size:clamp(.85rem,3.4vh,1.2rem); padding:7px 16px;}
     #controls{gap:6px; margin:3px 0 1px;}
   }
+  /* phones in portrait: prompt to rotate (a wide board needs landscape) */
+  #rotate{display:none;}
+  @media (orientation:portrait) and (pointer:coarse){
+    #rotate:not(.dismissed){
+      display:flex; position:fixed; inset:0; z-index:80;
+      background:rgba(15,20,25,.97); flex-direction:column; align-items:center;
+      justify-content:center; text-align:center; padding:26px; gap:16px; color:#e9c46a;
+    }
+  }
+  .rot-icon{font-size:4.5rem; animation:rothint 2.2s ease-in-out infinite;}
+  @keyframes rothint{0%,55%{transform:rotate(0)} 78%,100%{transform:rotate(90deg)}}
+  .rot-he{font-size:1.7rem; font-weight:bold; line-height:1.4;}
+  .rot-fa{font-size:1.35rem; opacity:.92;}
   #toast{
     position:fixed; left:50%; top:14px; transform:translateX(-50%);
     background:#000a; color:#fff; padding:10px 18px; border-radius:10px;
@@ -161,6 +174,14 @@
 <body>
 
 <div id="toast"></div>
+
+<!-- shown only on phones held in portrait; auto-hides in landscape -->
+<div id="rotate">
+  <div class="rot-icon">📱</div>
+  <div class="rot-he">סובבו את הטלפון לרוחב<br>למסך מלא 🔄</div>
+  <div class="rot-fa">برای نمای کامل، گوشی را افقی بگیرید</div>
+  <button class="ctrl" onclick="document.getElementById('rotate').classList.add('dismissed')">לשחק ככה בכל זאת</button>
+</div>
 
 <!-- win celebration card (tap to dismiss) -->
 <div id="wincard" onclick="this.classList.remove('show')">
