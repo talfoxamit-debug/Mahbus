@@ -153,6 +153,8 @@
     #gametitle, #banner, #controls, .ded-foot{ display:none !important; }
     #game{ padding:0; gap:0; justify-content:center; }
     canvas{ touch-action:manipulation; }
+    #menu .howto{ display:none; }            /* the how-to is about buttons that aren't in mobile mode */
+    #menu .flourish{ margin:.1em 0; }
   }
   #toast{
     position:fixed; left:50%; top:14px; transform:translateX(-50%);
@@ -487,10 +489,13 @@ function fitGameCanvas(){
 function fitMenu(){
   const menu = document.getElementById('menu');
   if (!menu || getComputedStyle(menu).display === 'none') return;
+  const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+  const vw = (window.visualViewport && window.visualViewport.width) || window.innerWidth;
+  if (IS_TOUCH) menu.style.height = vh + 'px';     // match the visible area
   const inner = menu.querySelector('.menu-inner');
   inner.style.transform = 'none';
-  const scale = Math.min(1, (window.innerHeight - 16) / inner.offsetHeight,
-                            (window.innerWidth  - 16) / inner.offsetWidth);
+  const scale = Math.min(1, (vh - 12) / inner.offsetHeight,
+                            (vw - 12) / inner.offsetWidth);
   inner.style.transform = 'scale(' + scale + ')';
 }
 function fitScreens(){ fitGameCanvas(); fitMenu(); }
