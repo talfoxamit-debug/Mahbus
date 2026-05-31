@@ -156,6 +156,23 @@
     #menu .howto{ display:none; }            /* the how-to is about buttons that aren't in mobile mode */
     #menu .flourish{ margin:.1em 0; }
   }
+  /* tiny floating controls, mobile only */
+  #mobctl{ display:none; }
+  @media (pointer:coarse){
+    #mobctl{
+      display:flex; gap:10px; align-items:center; position:fixed; z-index:45;
+      top:calc(env(safe-area-inset-top,6px) + 6px); left:8px; right:8px;
+      pointer-events:none;
+    }
+    #mobctl .sp{ flex:1; }
+    #mobctl button{
+      pointer-events:auto; width:46px; height:46px; border-radius:50%;
+      border:1px solid rgba(201,164,60,.6); background:rgba(18,24,30,.62);
+      color:#e9c46a; font-size:1.45rem; font-weight:bold; cursor:pointer;
+      -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px);
+    }
+    #mobctl button:active{ background:rgba(201,164,60,.3); }
+  }
   #toast{
     position:fixed; left:50%; top:14px; transform:translateX(-50%);
     background:#000a; color:#fff; padding:10px 18px; border-radius:10px;
@@ -171,6 +188,14 @@
 <body>
 
 <div id="toast"></div>
+
+<!-- tiny floating controls (mobile only): undo / sound / home -->
+<div id="mobctl">
+  <button onclick="onUndo()" aria-label="בטל מהלך">↩</button>
+  <span class="sp"></span>
+  <button id="mobSound" onclick="toggleSound()" aria-label="צליל">🔊</button>
+  <button onclick="toMenu()" aria-label="תפריט">⌂</button>
+</div>
 
 <!-- win celebration card (tap to dismiss) -->
 <div id="wincard" onclick="this.classList.remove('show')">
@@ -411,7 +436,9 @@ const Sound = (function(){
 function toggleSound(){
   Sound.unlock();
   Sound.set(!Sound.enabled);
-  document.getElementById('btnSound').textContent = Sound.enabled ? '🔊' : '🔇';
+  const t = Sound.enabled ? '🔊' : '🔇';
+  const a = document.getElementById('btnSound');  if (a) a.textContent = t;
+  const b = document.getElementById('mobSound');  if (b) b.textContent = t;
 }
 
 // pick the right sound for a move that is ACTUALLY being committed (st = state BEFORE the move)
