@@ -258,11 +258,15 @@ const Sound = (function(){
       ctx = new AC();
       const comp = ctx.createDynamicsCompressor();
       comp.threshold.value = -16; comp.ratio.value = 2.5; comp.knee.value = 22;
+      const body = ctx.createBiquadFilter();          // warm low-mid body
+      body.type = 'peaking'; body.frequency.value = 300; body.Q.value = 0.7; body.gain.value = 3;
       const warm = ctx.createBiquadFilter();          // roll off the cold highs
-      warm.type = 'lowpass'; warm.frequency.value = 5000; warm.Q.value = 0.4;
-      master = ctx.createGain(); master.gain.value = 0.8;
-      master.connect(warm); warm.connect(comp); comp.connect(ctx.destination);
-      reverb = ctx.createConvolver(); reverb.buffer = makeIR(3.0, 2.0);
+      warm.type = 'lowpass'; warm.frequency.value = 5200; warm.Q.value = 0.4;
+      const sat = ctx.createWaveShaper();             // gentle analog-style warmth
+      sat.curve = satCurve(1.7); sat.oversample = '2x';
+      master = ctx.createGain(); master.gain.value = 0.78;
+      master.connect(body); body.connect(warm); warm.connect(sat); sat.connect(comp); comp.connect(ctx.destination);
+      reverb = ctx.createConvolver(); reverb.buffer = makeIR(3.2, 1.8);
       const dark = ctx.createBiquadFilter();          // soft, dark reverb tail
       dark.type = 'lowpass'; dark.frequency.value = 2300;
       const rev = ctx.createGain(); rev.gain.value = 0.32;
@@ -280,31 +284,43 @@ const Sound = (function(){
     }
     return buf;
   }
-  function route(node, send){                         // dry to master + a wet send to reverb
-    node.connect(master);
-    if (send > 0){ const g = ctx.createGain(); g.gain.value = send; node.connect(g); g.connect(reverb); }
+  function satCurve(k){                                // soft tanh saturation curve
+    const n = 1024, c = new Float32Array(n);
+    for (let i = 0; i < n; i++){ const x = i/(n-1)*2 - 1; c[i] = Math.tanh(k*x) / Math.tanh(k); }
+    return c;
   }
-  // warm, soft mallet/marimba-like voice: a gentle sine with a slow attack and a
-  // soft octave that fades fast, heavily low-passed = mellow and round, not metallic
-  function note(freq, t0, dur, peak, bright, send){
-    const c = ac(); if (!c) return;
-    const lp = c.createBiquadFilter(); lp.type = 'lowpass';
-    lp.frequency.value = Math.min(bright || 2000, freq * 4); lp.Q.value = 0.5;
-    route(lp, send == null ? 0.32 : send);
-    const g = c.createGain();
+  function route(node, send, pan){                    // dry (optionally panned) to master + wet send to reverb
+    let out = node;
+    if (pan && ctx.createStereoPanner){ const p = ctx.createStereoPanner(); p.pan.value = pan; node.connect(p); out = p; }
+    out.connect(master);
+    if (send > 0){ const g = ctx.createGain(); g.gain.value = send; out.connect(g); g.connect(reverb); }
+  }
+  function partial(freq, t0, dur, peak, dest){        // one sine partial with a soft envelope
+    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = freq;
+    const g = ctx.createGain();
     g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(peak, t0 + 0.03);     // soft attack = warm, no click
+    g.gain.exponentialRampToValueAtTime(peak, t0 + 0.02);
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    g.connect(lp);
-    const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = freq;
-    o.connect(g); o.start(t0); o.stop(t0 + dur + 0.05);
-    const g2 = c.createGain();
-    g2.gain.setValueAtTime(0.0001, t0);
-    g2.gain.exponentialRampToValueAtTime(peak * 0.16, t0 + 0.025);
-    g2.gain.exponentialRampToValueAtTime(0.0001, t0 + dur * 0.4);
-    g2.connect(lp);
-    const o2 = c.createOscillator(); o2.type = 'sine'; o2.frequency.value = freq * 2;
-    o2.connect(g2); o2.start(t0); o2.stop(t0 + dur * 0.4 + 0.05);
+    o.connect(g); g.connect(dest); o.start(t0); o.stop(t0 + dur + 0.05);
+  }
+  // warm additive mallet voice: fundamental + a few softly-decaying partials (one
+  // slightly inharmonic) + a soft mallet-attack transient, low-passed and gently panned
+  function note(freq, t0, dur, peak, bright, send, pan){
+    const c = ac(); if (!c) return;
+    freq *= 1 + (Math.random()*2 - 1) * 0.0015;       // tiny natural per-note detune
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass';
+    lp.frequency.value = Math.min(bright || 2400, freq * 5); lp.Q.value = 0.5;
+    route(lp, send == null ? 0.3 : send, pan || 0);
+    const P = [[1, 1, 1], [2, 0.22, 0.6], [3, 0.10, 0.42], [4.2, 0.05, 0.3]]; // ratio, gain, decay
+    for (const pr of P) partial(freq * pr[0], t0, dur * pr[2], peak * pr[1], lp);
+    // soft mallet "knock" transient at the very onset
+    const len = Math.floor(c.sampleRate * 0.02);
+    const buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random()*2 - 1) * Math.pow(1 - i/len, 2);
+    const src = c.createBufferSource(); src.buffer = buf;
+    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = freq * 2; bp.Q.value = 1;
+    const tg = c.createGain(); tg.gain.value = peak * 0.12;
+    src.connect(bp); bp.connect(tg); tg.connect(lp); src.start(t0);
   }
   function tom(t0, peak){                              // tombak bass "tom"
     const c = ac(); if (!c) return;
@@ -318,7 +334,7 @@ const Sound = (function(){
   }
   // a warm wooden "tok" — a die landing on a wooden board: a short noise burst
   // through a low woody resonance, plus a soft low body tone, all low-passed
-  function clack(t0, freq, peak){
+  function clack(t0, freq, peak, pan){
     const c = ac(); if (!c) return;
     const dur = 0.085, len = Math.floor(c.sampleRate * dur);
     const buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
@@ -327,21 +343,22 @@ const Sound = (function(){
     const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = freq; bp.Q.value = 3.5;
     const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1700; // keep it mellow
     const g = c.createGain(); g.gain.value = peak;
-    src.connect(bp); bp.connect(lp); lp.connect(g); route(g, 0.12); src.start(t0);
+    src.connect(bp); bp.connect(lp); lp.connect(g); route(g, 0.12, pan); src.start(t0);
     const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = freq * 0.5; // woody body
     const og = c.createGain();
     og.gain.setValueAtTime(peak * 0.5, t0);
     og.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.07);
-    o.connect(og); route(og, 0.1); o.start(t0); o.stop(t0 + 0.09);
+    o.connect(og); route(og, 0.1, pan); o.start(t0); o.stop(t0 + 0.09);
   }
-  function shimmer(t0, dur, peak){                     // daf jingles
+  function thump(t0, peak){                             // soft low resonance of the board
     const c = ac(); if (!c) return;
-    const len = Math.floor(c.sampleRate * dur), buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
-    for (let i = 0; i < len; i++) d[i] = (Math.random()*2 - 1) * Math.pow(1 - i/len, 1.5);
-    const src = c.createBufferSource(); src.buffer = buf;
-    const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 5200;
-    const g = c.createGain(); g.gain.value = peak || 0.07;
-    src.connect(hp); hp.connect(g); route(g, 0.35); src.start(t0);
+    const o = c.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(110, t0); o.frequency.exponentialRampToValueAtTime(56, t0 + 0.12);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(peak || 0.12, t0 + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.2);
+    o.connect(g); route(g, 0.1, 0); o.start(t0); o.stop(t0 + 0.22);
   }
   // warm, consonant A-minor pentatonic (no microtones — keeps it sweet, never "off")
   const S = { D:220, Ek:261.63, F:293.66, G:329.63, A:392.0, Bb:440, C:523.25, D2:587.33, F2:698.46, A2:880.0 };
@@ -352,24 +369,28 @@ const Sound = (function(){
     set(on){ enabled = on; },
     get enabled(){ return enabled; },
     move(){ if (!enabled) return; const c = ac(); if (!c) return;
-            note(MOVE[(Math.random()*MOVE.length)|0], c.currentTime, 0.85, 0.14, 3000, 0.45); },
+            note(MOVE[(Math.random()*MOVE.length)|0], c.currentTime, 0.85, 0.14, 2600, 0.4, (Math.random()*2-1)*0.3); },
     roll(){ if (!enabled) return; const c = ac(); if (!c) return; let w = c.currentTime;     // dice tumbling on wood
+            thump(w + 0.02, 0.12);
             const hits = 4 + (Math.random()*3 | 0);
             for (let i = 0; i < hits; i++){
               w += 0.05 + Math.random()*0.06;
-              clack(w, 360 + Math.random()*460, 0.16 + Math.random()*0.08);
+              const pan = (Math.random()*2 - 1) * 0.5;
+              clack(w, 360 + Math.random()*460, 0.15 + Math.random()*0.08, pan);
+              if (Math.random() < 0.5) clack(w + 0.018, 320 + Math.random()*360, 0.09 + Math.random()*0.05, -pan);
             }
-            clack(w + 0.12, 500, 0.18); clack(w + 0.22, 340, 0.14); },                        // settle
+            clack(w + 0.12, 500, 0.17, 0.12); clack(w + 0.22, 340, 0.13, -0.12); },            // settle
     trap(){ if (!enabled) return; const c = ac(); if (!c) return; const t = c.currentTime;   // dramatic capture
             tom(t, 0.5);
-            note(S.D,  t+0.02, 1.5, 0.16, 2400, 0.55);
-            note(S.Ek, t+0.04, 1.5, 0.11, 2400, 0.55); },                                     // tense koron dyad
+            note(S.D,  t+0.02, 1.5, 0.16, 2400, 0.55, -0.2);
+            note(S.Ek, t+0.04, 1.5, 0.11, 2400, 0.55,  0.2); },                                // soft minor-third
     off(){ if (!enabled) return; const c = ac(); if (!c) return; const t = c.currentTime;     // rising "coming home"
-           note(S.A, t, 0.7, 0.14, 3200, 0.5); note(S.C, t+0.10, 0.7, 0.14, 3200, 0.5); note(S.D2, t+0.20, 1.1, 0.16, 3400, 0.55); },
-    win(){ if (!enabled) return; const c = ac(); if (!c) return; const t = c.currentTime;     // santur flourish
+           note(S.A, t, 0.7, 0.14, 2800, 0.5, -0.2); note(S.C, t+0.10, 0.7, 0.14, 2800, 0.5, 0); note(S.D2, t+0.20, 1.1, 0.16, 3000, 0.55, 0.2); },
+    win(){ if (!enabled) return; const c = ac(); if (!c) return; const t = c.currentTime;     // flourish + resolving chord
            const seq = [S.D, S.F, S.G, S.A, S.C, S.D2, S.A, S.D2];
            const tm  = [0, .15, .29, .43, .60, .78, .98, 1.18];
-           seq.forEach((f,i) => note(f, t+tm[i], 1.6, 0.15, 2200, 0.45));
+           seq.forEach((f,i) => note(f, t+tm[i], 1.6, 0.14, 2200, 0.45, (i%2 ? 0.28 : -0.28)));
+           [[S.A,-0.3],[S.C,0],[S.D2,0.3]].forEach(p => note(p[0], t+1.55, 2.4, 0.12, 2400, 0.5, p[1]));
            tom(t, 0.36); tom(t+0.78, 0.36); },
   };
 })();
