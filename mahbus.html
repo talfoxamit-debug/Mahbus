@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>המחבוס של סבא בוריס</title>
 <style>
   :root{
@@ -11,7 +11,7 @@
     --felt:#0f5132; --felt2:#0b3d27;
   }
   *{box-sizing:border-box;}
-  html,body{height:100%;}
+  html,body{height:100%; overflow:hidden; overscroll-behavior:none;}
   body{
     margin:0; color:var(--ink); overflow:hidden;
     font-family:Georgia,"Times New Roman",serif; text-align:center;
@@ -149,8 +149,10 @@
   /* TOUCH DEVICES ONLY (phones/tablets): pure board + dice, no buttons, max play area.
      Desktop/laptop (pointer:fine) is completely unaffected. */
   @media (pointer:coarse){
+    html,body{ position:fixed; width:100%; height:100%; touch-action:none; }
     #gametitle, #banner, #controls, .ded-foot{ display:none !important; }
-    #game{ padding:2px; gap:0; }
+    #game{ padding:0; gap:0; justify-content:center; }
+    canvas{ touch-action:manipulation; }
   }
   #toast{
     position:fixed; left:50%; top:14px; transform:translateX(-50%);
@@ -460,21 +462,24 @@ function fitGameCanvas(){
   const game = document.getElementById('game');
   if (!game || getComputedStyle(game).display === 'none') return;
   const s = getComputedStyle(game);
-  let used = parseFloat(s.paddingTop) + parseFloat(s.paddingBottom) + 8;
-  ['gametitle', 'banner', 'controls'].forEach(id => {
-    const e = document.getElementById(id); if (e) used += e.offsetHeight;
-  });
-  const foot = game.querySelector('.ded-foot'); if (foot && getComputedStyle(foot).display !== 'none') used += foot.offsetHeight;
   const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
-  const vw = (window.visualViewport && window.visualViewport.width) || window.innerWidth;
+  if (IS_TOUCH) game.style.height = vh + 'px';     // match the VISIBLE area so nothing scrolls
+  // space taken by chrome (none on touch — board only)
+  let used = parseFloat(s.paddingTop) + parseFloat(s.paddingBottom);
+  if (!IS_TOUCH){
+    used += 8;
+    ['gametitle', 'banner', 'controls'].forEach(id => { const e = document.getElementById(id); if (e) used += e.offsetHeight; });
+    const foot = game.querySelector('.ded-foot'); if (foot && getComputedStyle(foot).display !== 'none') used += foot.offsetHeight;
+  }
   const availH = vh - used;
   const availW = game.clientWidth - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight);
-  // tall viewport → portrait board (rotated 90°); otherwise the wide landscape board
-  ORIENT = (vh > vw * 1.05) ? 'port' : 'land';
-  const ratio = (ORIENT === 'port') ? (H / W) : (W / H);   // width / height of the board
+  // portrait board ONLY on touch devices held upright; desktop is always the wide board
+  const portrait = IS_TOUCH && window.matchMedia && window.matchMedia('(orientation:portrait)').matches;
+  ORIENT = portrait ? 'port' : 'land';
+  const ratio = (ORIENT === 'port') ? (H / W) : (W / H);   // board width / height
   let w = Math.min(availW, availH * ratio);
   if (!(w > 0)) w = availW;
-  w = Math.max(200, w);
+  w = Math.max(160, w);
   cv.style.width = w + 'px';
   cv.style.height = (w / ratio) + 'px';
   if (STATE) draw();                              // re-render in the chosen orientation
@@ -1063,6 +1068,7 @@ function applyOrient(){
 function drawText(txt, x, y, font, color){
   ctx.save();
   ctx.font = font; ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.shadowColor = 'rgba(0,0,0,0.65)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 1;
   if (ORIENT === 'port'){ ctx.translate(x, y); ctx.rotate(-Math.PI / 2); ctx.fillText(txt, 0, 0); }
   else ctx.fillText(txt, x, y);
   ctx.restore();
