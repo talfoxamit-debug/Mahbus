@@ -35,6 +35,10 @@
   .bigbtn:hover{transform:translateY(-2px);}
   .bigbtn:active{transform:translateY(2px); box-shadow:0 2px 0 #a9781f;}
   .bigbtn.alt{background:#5d7488; color:#fff; box-shadow:0 4px 0 #3c4d5c;}
+  .level-label{font-size:1.25rem; margin-top:10px; color:#cdbf9f;}
+  .level-row{display:flex; gap:10px; justify-content:center; flex-wrap:wrap;}
+  .bigbtn.lvl{min-width:150px; font-size:1.25rem; padding:16px 18px;}
+  .hint{font-size:.85rem; opacity:.8; font-weight:normal;}
   canvas{
     background:#000; border-radius:10px; width:100%; height:auto;
     max-width:960px; touch-action:manipulation; display:block; margin:0 auto;
@@ -91,11 +95,17 @@
     <b>בודד</b>, יושבים מעליו ו<b>לוכדים</b> אותו. חייל לכוד קפוא ואינו יכול לזוז
     עד שמורידים את החייל/ים שמעליו. נקודה שמוחזקת ב-2 חיילי אויב או יותר — חסומה,
     ואי אפשר לנחות עליה.</p>
-    <p><b>בתורך.</b> הטל את הקוביות והזז חייל אחד לכל קובייה (דאבּל נותן ארבעה
-    מהלכים). לחץ על חייל כדי לראות את המהלכים החוקיים מודגשים, ואז לחץ לאן ללכת.</p>
+    <p><b>בתורך.</b> הטל את הקוביות (או הקש על מקש <b>רווח</b>) והזז חייל אחד לכל
+    קובייה (דאבּל נותן ארבעה מהלכים). לחץ על חייל כדי לראות את המהלכים החוקיים
+    מודגשים, ואז לחץ לאן ללכת.</p>
   </div>
-  <button class="bigbtn" onclick="startGame('ai')">משחק נגד המחשב</button>
-  <button class="bigbtn alt" onclick="startGame('hotseat')">שני שחקנים</button>
+  <div class="level-label">משחק נגד המחשב — בחר רמת קושי:</div>
+  <div class="level-row">
+    <button class="bigbtn lvl" onclick="startGame('ai','easy')">🙂 קל</button>
+    <button class="bigbtn lvl" onclick="startGame('ai','medium')">😐 בינוני</button>
+    <button class="bigbtn lvl" onclick="startGame('ai','hard')">😤 קשה</button>
+  </div>
+  <button class="bigbtn alt" onclick="startGame('hotseat')">👥 שני שחקנים</button>
 </div>
 
 <!-- ===================== GAME ===================== -->
@@ -103,10 +113,11 @@
   <div id="banner">&nbsp;</div>
   <canvas id="board" width="960" height="620"></canvas>
   <div id="controls">
-    <button id="btnRoll" onclick="onRoll()">🎲 הטל את הקוביות</button>
-    <button id="btnUndo" class="ctrl" onclick="onUndo()">↩ בטל מהלך</button>
-    <button id="btnNew"  class="ctrl" onclick="startGame(STATE.mode)">משחק חדש</button>
-    <button id="btnMenu" class="ctrl" onclick="toMenu()">תפריט</button>
+    <button id="btnRoll" onclick="onRoll()">🎲 הטל את הקוביות <span class="hint">(רווח)</span></button>
+    <button id="btnUndo"  class="ctrl" onclick="onUndo()">↩ בטל מהלך</button>
+    <button id="btnNew"   class="ctrl" onclick="startGame(STATE.mode, STATE.level)">משחק חדש</button>
+    <button id="btnMenu"  class="ctrl" onclick="toMenu()">תפריט</button>
+    <button id="btnSound" class="ctrl" onclick="toggleSound()">🔊</button>
   </div>
 </div>
 
@@ -141,6 +152,64 @@ const inHome = (p, i) => (p === 'W' ? (i >= 1 && i <= 6) : (i >= 19 && i <= 24))
 const destFor = (p, from, d) => (p === 'W' ? from - d : from + d); // <1 or >24 => off
 const clone = s => (typeof structuredClone === 'function' ? structuredClone(s) : JSON.parse(JSON.stringify(s)));
 
+/* ---------- sound (synthesized via Web Audio, no files = stays offline) ---------- */
+const Sound = (function(){
+  let ctx = null, enabled = true;
+  function ac(){
+    if (!ctx){ const AC = window.AudioContext || window.webkitAudioContext; if (AC) ctx = new AC(); }
+    if (ctx && ctx.state === 'suspended') ctx.resume();
+    return ctx;
+  }
+  function tone(freq, t0, dur, type, peak){
+    const c = ac(); if (!c) return;
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = type || 'sine'; o.frequency.setValueAtTime(freq, t0);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(peak || 0.2, t0 + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g).connect(c.destination);
+    o.start(t0); o.stop(t0 + dur + 0.02);
+  }
+  function noise(t0, dur, peak){
+    const c = ac(); if (!c) return;
+    const n = Math.floor(c.sampleRate * dur);
+    const buf = c.createBuffer(1, n, c.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random()*2 - 1) * (1 - i/n); // decaying rattle
+    const src = c.createBufferSource(); src.buffer = buf;
+    const g = c.createGain(); g.gain.value = peak || 0.25;
+    const f = c.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 800;
+    src.connect(f).connect(g).connect(c.destination); src.start(t0);
+  }
+  return {
+    unlock(){ ac(); },
+    set(on){ enabled = on; },
+    get enabled(){ return enabled; },
+    roll(){ if (!enabled) return; const c = ac(); if (!c) return; noise(c.currentTime, 0.32, 0.3); },
+    move(){ if (!enabled) return; const c = ac(); if (!c) return; tone(280, c.currentTime, 0.08, 'triangle', 0.18); },
+    trap(){ if (!enabled) return; const c = ac(); if (!c) return;
+            tone(200, c.currentTime, 0.12, 'square', 0.22); tone(110, c.currentTime+0.06, 0.18, 'sawtooth', 0.2); },
+    off(){ if (!enabled) return; const c = ac(); if (!c) return;
+           tone(880, c.currentTime, 0.12, 'sine', 0.22); tone(1320, c.currentTime+0.08, 0.14, 'sine', 0.18); },
+    win(){ if (!enabled) return; const c = ac(); if (!c) return;
+           [523,659,784,1046].forEach((f,i)=>tone(f, c.currentTime + i*0.13, 0.22, 'triangle', 0.22)); },
+  };
+})();
+
+function toggleSound(){
+  Sound.unlock();
+  Sound.set(!Sound.enabled);
+  document.getElementById('btnSound').textContent = Sound.enabled ? '🔊' : '🔇';
+}
+
+// pick the right sound for a move that is ACTUALLY being committed (st = state BEFORE the move)
+function playMoveSound(st, m){
+  if (m.to === 'off'){ Sound.off(); return; }
+  const dst = st.points[m.to];
+  if (dst.top && dst.top !== st.current && dst.count === 1 && dst.trapped === null) Sound.trap();
+  else Sound.move();
+}
+
 function newBoard(){
   const pts = [];
   for (let i = 0; i <= 24; i++) pts.push({ top:null, count:0, trapped:null });
@@ -149,7 +218,7 @@ function newBoard(){
   return pts;
 }
 
-function startGame(mode){
+function startGame(mode, level){
   STATE = {
     points: newBoard(),
     off: { W:0, B:0 },
@@ -157,12 +226,14 @@ function startGame(mode){
     dicePool: [],            // [{v, used}]
     rolled: false,
     mode: mode,              // 'ai' | 'hotseat'
+    level: level || 'medium',// 'easy' | 'medium' | 'hard' (vs computer)
     phase: 'await',          // 'await' (need roll) | 'move' | 'over'
     winner: null,
   };
   SELECTED = null;
   HISTORY = [];
   AI_BUSY = false;
+  Sound.unlock();
   document.getElementById('menu').style.display = 'none';
   document.getElementById('game').style.display = 'block';
   draw();
@@ -272,16 +343,90 @@ function pipCount(st, p){
 
 function onRoll(){
   if (!STATE || STATE.phase !== 'await' || AI_BUSY) return;
-  rollFor(STATE.current);
-  STATE.phase = 'move';
-  HISTORY = [];
-  if (legalMoves(STATE, STATE.current).length === 0){
-    toast('אין מהלכים חוקיים — התור עובר.');
+  AI_BUSY = true;                       // lock briefly during the tumble animation
+  animateRoll(STATE.current, () => {
+    AI_BUSY = false;
+    STATE.phase = 'move';
+    HISTORY = [];
+    if (legalMoves(STATE, STATE.current).length === 0){
+      toast('אין מהלכים חוקיים — התור עובר.');
+      draw(); updateUI();
+      setTimeout(endTurn, 1100);
+      return;
+    }
     draw(); updateUI();
-    setTimeout(endTurn, 1100);
-    return;
+  });
+}
+
+/* ---------- dice roll animation ---------- */
+let ROLLING = false, ANIM_DICE = null, animTimer = null;
+function animateRoll(player, done){
+  Sound.roll();
+  ROLLING = true; STATE.rolled = false; STATE.dicePool = [];
+  let ticks = 0; const TOTAL = 11;
+  clearInterval(animTimer);
+  animTimer = setInterval(() => {
+    ANIM_DICE = [1 + Math.floor(Math.random()*6), 1 + Math.floor(Math.random()*6)];
+    draw();
+    if (++ticks >= TOTAL){
+      clearInterval(animTimer);
+      ROLLING = false; ANIM_DICE = null;
+      rollFor(player);
+      draw(); updateUI();
+      done();
+    }
+  }, 55);
+}
+
+/* ---------- multi-step move preview (chaining the SAME piece) ---------- */
+// All stops reachable by moving ONLY this piece with the remaining dice.
+// step = how many dice it costs; seq = the moves to get there.
+function pieceMovePreviews(st, p, from){
+  const found = [];
+  (function rec(s, pos, seq){
+    if (seq.length >= 4) return;
+    for (const m of legalMoves(s, p)){
+      if (m.from !== pos) continue;
+      const nseq = seq.concat(m);
+      found.push({ to:m.to, step:nseq.length, seq:nseq });
+      if (m.to !== 'off'){
+        const ns = clone(s); ns.current = p; applyMove(ns, m);
+        if (ns.phase !== 'over') rec(ns, m.to, nseq);
+      }
+    }
+  })(clone(st), from, []);
+  // keep the cheapest (fewest dice) way to reach each distinct stop
+  const map = new Map();
+  for (const r of found){
+    const k = String(r.to);
+    if (!map.has(k) || r.step < map.get(k).step) map.set(k, r);
   }
-  draw(); updateUI();
+  return [...map.values()];
+}
+
+// play a sequence of one piece's moves for the human, animating each hop
+function humanPlaySeq(seq){
+  if (seq.length === 0) return;
+  AI_BUSY = true; SELECTED = null;
+  let i = 0;
+  (function step(){
+    if (i >= seq.length){
+      AI_BUSY = false; draw(); updateUI();
+      if (STATE.phase === 'over'){ announceWin(); return; }
+      if (legalMoves(STATE, STATE.current).length === 0){
+        if (unusedValues(STATE).length > 0) toast('אין עוד מהלכים אפשריים.');
+        setTimeout(endTurn, 700);
+      }
+      return;
+    }
+    const m = seq[i++];
+    HISTORY.push(clone(STATE));
+    playMoveSound(STATE, m);
+    applyMove(STATE, m);
+    draw(); updateUI();
+    if (STATE.phase === 'over'){ AI_BUSY = false; announceWin(); return; }
+    setTimeout(step, seq.length > 1 ? 300 : 0);
+  })();
 }
 
 function rollFor(){
@@ -291,18 +436,6 @@ function rollFor(){
     ? [a,a,a,a].map(v => ({ v, used:false }))
     : [a,b].map(v => ({ v, used:false }));
   STATE.rolled = true;
-}
-
-function humanMove(m){
-  HISTORY.push(clone(STATE));
-  applyMove(STATE, m);
-  SELECTED = null;
-  draw(); updateUI();
-  if (STATE.phase === 'over'){ announceWin(); return; }
-  if (legalMoves(STATE, STATE.current).length === 0){
-    if (unusedValues(STATE).length > 0) toast('אין עוד מהלכים אפשריים.');
-    setTimeout(endTurn, 700);
-  }
 }
 
 function onUndo(){
@@ -325,6 +458,7 @@ function endTurn(){
 }
 
 function announceWin(){
+  Sound.win();
   draw(); updateUI();
   const who = STATE.winner === HUMAN && STATE.mode === 'ai' ? 'ניצחת! 🎉'
             : (STATE.winner === 'W' ? 'הלבן ניצח! 🎉' : 'השחור ניצח! 🎉');
@@ -332,26 +466,29 @@ function announceWin(){
 }
 
 /* =========================================================================
-   AI  (simple 1-turn heuristic search; AI plays Black)
+   AI  (AI plays Black). Three levels:
+     easy   – plays a random legal sequence
+     medium – greedy: best position after its own turn (1-ply heuristic)
+     hard   – 2-ply expectimax: best after averaging the opponent's reply
    ========================================================================= */
 
-function scoreState(st){
-  // from Black's perspective; higher is better
-  let trappedOpp = 0, trappedByOpp = 0, myBlots = 0;
+// position score from player p's point of view; higher is better
+function scoreFor(st, p){
+  const o = opp(p);
+  let trapByMe = 0, trapAgainst = 0, myBlots = 0;
   for (let i = 1; i <= 24; i++){
     const pt = st.points[i];
-    if (pt.trapped === 'W') trappedOpp++;      // I (Black) am sitting on a White prisoner
-    if (pt.trapped === 'B') trappedByOpp++;
-    if (pt.top === 'B' && pt.count === 1 && pt.trapped === null){
-      // exposed if a White checker is 1..6 pips "behind" (White moves downward)
-      for (let k = i + 1; k <= Math.min(24, i + 6); k++)
-        if (st.points[k].top === 'W'){ myBlots++; break; }
+    if (pt.trapped === o) trapByMe++;        // I'm sitting on an enemy prisoner
+    if (pt.trapped === p) trapAgainst++;     // one of mine is imprisoned
+    if (pt.top === p && pt.count === 1 && pt.trapped === null){
+      // a blot is exposed if an enemy checker is within 6 pips able to reach it
+      if (o === 'W'){ for (let k = i+1; k <= Math.min(24, i+6); k++) if (st.points[k].top === 'W'){ myBlots++; break; } }
+      else          { for (let k = i-1; k >= Math.max(1, i-6); k--) if (st.points[k].top === 'B'){ myBlots++; break; } }
     }
   }
-  const race = pipCount(st, 'W') - pipCount(st, 'B');
-  return race
-       + (trappedOpp - trappedByOpp) * 26
-       + (st.off.B - st.off.W) * 30
+  return (pipCount(st, o) - pipCount(st, p))
+       + (trapByMe - trapAgainst) * 26
+       + (st.off[p] - st.off[o]) * 30
        - myBlots * 8;
 }
 
@@ -361,63 +498,131 @@ function sig(st){
     const pt = st.points[i];
     s += (pt.top || '_') + pt.count + (pt.trapped || '_') + ';';
   }
-  s += '#' + st.dicePool.filter(d => d.used).length;
-  return s;
+  return s + '#' + st.dicePool.filter(d => d.used).length;
 }
 
-function aiBestSequence(start){
-  let best = { score:-Infinity, seq:[] };
+function makePool(a, b){
+  return (a === b) ? [a,a,a,a].map(v => ({v, used:false})) : [a,b].map(v => ({v, used:false}));
+}
+
+// best full turn for player p, given st.current===p and st.dicePool set.
+// returns { seq, score, end }. nodeCap bounds the search for responsiveness.
+function bestPlay(start, p, nodeCap){
+  let best = { score:-Infinity, seq:[], end:null };
   const seen = new Set();
   let nodes = 0;
   (function rec(st, seq){
-    if (++nodes > 60000) return; // safety bound
-    const moves = legalMoves(st, 'B');
+    if (++nodes > (nodeCap || 60000)) return;
+    const moves = legalMoves(st, p);
     if (moves.length === 0){
-      const sc = scoreState(st) + seq.length * 0.6; // prefer using more dice
-      if (sc > best.score) best = { score:sc, seq:seq.slice() };
+      const sc = scoreFor(st, p) + seq.length * 0.6; // prefer using more dice
+      if (sc > best.score) best = { score:sc, seq:seq.slice(), end:st };
       return;
     }
     for (const m of moves){
-      const ns = clone(st);
-      applyMove(ns, m);
+      const ns = clone(st); ns.current = p; applyMove(ns, m);
+      if (ns.phase === 'over'){
+        const sc = scoreFor(ns, p) + 10000;
+        if (sc > best.score) best = { score:sc, seq:seq.concat(m), end:ns };
+        continue;
+      }
       const k = sig(ns);
-      if (seen.has(k)) continue;  // collapse equivalent dice orderings
+      if (seen.has(k)) continue; // collapse equivalent dice orderings
       seen.add(k);
       rec(ns, seq.concat(m));
-      if (ns.phase === 'over'){ // a winning line is as good as it gets
-        const sc = scoreState(ns) + 10000;
-        if (sc > best.score) best = { score:sc, seq:seq.concat(m) };
-      }
     }
   })(clone(start), []);
+  return best;
+}
+
+// a random legal sequence (Easy): keep making random moves until none remain
+function randomSequence(start){
+  const seq = []; let st = clone(start);
+  while (true){
+    const moves = legalMoves(st, AI);
+    if (moves.length === 0) break;
+    const m = moves[Math.floor(Math.random() * moves.length)];
+    st.current = AI; applyMove(st, m); seq.push(m);
+    if (st.phase === 'over') break;
+  }
+  return seq;
+}
+
+// collect distinct end positions of all of AI's full turns, with their scores
+function aiCandidates(start, nodeCap){
+  const out = []; const seen = new Set(); let nodes = 0;
+  (function rec(st, seq){
+    if (++nodes > (nodeCap || 60000)) return;
+    const moves = legalMoves(st, AI);
+    if (moves.length === 0){ out.push({ seq:seq.slice(), end:st, score:scoreFor(st, AI) + seq.length * 0.6 }); return; }
+    for (const m of moves){
+      const ns = clone(st); ns.current = AI; applyMove(ns, m);
+      if (ns.phase === 'over'){ out.push({ seq:seq.concat(m), end:ns, score:scoreFor(ns, AI) + 10000 }); continue; }
+      const k = sig(ns);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      rec(ns, seq.concat(m));
+    }
+  })(clone(start), []);
+  return out;
+}
+
+// Hard: among the top candidates, pick the one that leaves White worst off
+// (expectimax over White's 21 possible rolls, using White's best greedy reply)
+function hardSequence(start){
+  const cands = aiCandidates(start, 40000);
+  if (cands.length === 0) return [];
+  cands.sort((a,b) => b.score - a.score);
+  const top = cands.slice(0, 6);
+  let best = null, bestVal = -Infinity;
+  for (const c of top){
+    if (c.end.phase === 'over'){ return c.seq; } // a winning line — take it
+    let total = 0, wsum = 0;
+    for (let d1 = 1; d1 <= 6; d1++){
+      for (let d2 = d1; d2 <= 6; d2++){
+        const w = (d1 === d2) ? 1 : 2;          // probability weight of this roll
+        const ws = clone(c.end); ws.current = 'W'; ws.dicePool = makePool(d1, d2);
+        total += w * bestPlay(ws, 'W', 6000).score; // White's best position after replying
+        wsum  += w;
+      }
+    }
+    const expWhite = total / wsum;
+    const val = c.score * 0.3 - expWhite;       // good for me AND bad for White
+    if (val > bestVal){ bestVal = val; best = c; }
+  }
   return best.seq;
 }
 
 function aiTurn(){
   if (!STATE || STATE.phase === 'over') return;
   AI_BUSY = true;
-  rollFor(AI);
   STATE.phase = 'move';
-  draw(); updateUI();
+  animateRoll(AI, () => {
+    let seq;
+    if      (STATE.level === 'easy') seq = randomSequence(STATE);
+    else if (STATE.level === 'hard') seq = hardSequence(STATE);
+    else                             seq = bestPlay(STATE, AI, 60000).seq;
 
-  const seq = aiBestSequence(STATE);
-  if (seq.length === 0){
-    toast('אין למחשב מהלך.');
-    setTimeout(() => { AI_BUSY = false; endTurn(); }, 1100);
-    return;
-  }
-  let i = 0;
-  (function step(){
-    if (i >= seq.length || STATE.phase === 'over'){
-      AI_BUSY = false;
-      if (STATE.phase === 'over') announceWin();
-      else setTimeout(endTurn, 600);
+    if (seq.length === 0){
+      toast('אין למחשב מהלך.');
+      setTimeout(() => { AI_BUSY = false; endTurn(); }, 1100);
       return;
     }
-    applyMove(STATE, seq[i++]);
-    draw(); updateUI();
-    setTimeout(step, 750);
-  })();
+    let i = 0;
+    (function step(){
+      if (i >= seq.length || STATE.phase === 'over'){
+        AI_BUSY = false;
+        if (STATE.phase === 'over') announceWin();
+        else setTimeout(endTurn, 600);
+        return;
+      }
+      const m = seq[i++];
+      playMoveSound(STATE, m);
+      applyMove(STATE, m);
+      draw(); updateUI();
+      setTimeout(step, 750);
+    })();
+  });
 }
 
 /* =========================================================================
@@ -467,10 +672,9 @@ function draw(){
   ctx.fillRect(trayL, boardT, trayR - trayL, boardB - boardT);
 
   const sel = SELECTED;
-  const hints = STATE && STATE.phase === 'move' && !AI_BUSY; // legal moves always highlighted
   const human = STATE && (STATE.mode === 'hotseat' || STATE.current === HUMAN);
-  let dests = [];
-  if (sel !== null && STATE) dests = legalMoves(STATE, STATE.current).filter(m => m.from === sel);
+  const interactive = STATE && STATE.phase === 'move' && !AI_BUSY && human && !ROLLING;
+  const previews = (interactive && sel !== null) ? pieceMovePreviews(STATE, STATE.current, sel) : [];
 
   // triangles
   for (let p = 1; p <= 24; p++){
@@ -491,22 +695,13 @@ function draw(){
     ctx.fill();
   }
 
-  // highlight legal destination points / tray
-  if (hints && human){
-    for (const m of dests){
-      if (m.to === 'off'){
-        ctx.strokeStyle = '#ffe08a'; ctx.lineWidth = 5;
-        ctx.strokeRect(trayL + 3, boardT + 3, trayR - trayL - 6, boardB - boardT - 6);
-      } else {
-        drawDestMarker(m.to);
-      }
-    }
+  // pieces that can move get a soft dashed glow (only before one is picked up)
+  if (interactive && sel === null){
+    for (const f of new Set(legalMoves(STATE, STATE.current).map(m => m.from))) drawMovableGlow(f);
   }
 
-  // checkers
+  // checkers + borne-off tray
   for (let p = 1; p <= 24; p++) drawStack(p);
-
-  // borne-off pieces in the tray
   drawOffTray();
 
   // selected source ring
@@ -517,17 +712,48 @@ function draw(){
     ctx.beginPath(); ctx.arc(x, cy, R + 4, 0, 7); ctx.stroke();
   }
 
+  // reachable stops for the selected piece, each labeled with how many dice it
+  // costs (1,2,3,4). Drawn on top so multi-step landings are always visible.
+  if (interactive){
+    for (const pv of previews){
+      if (pv.to === 'off'){
+        ctx.strokeStyle = '#ffe08a'; ctx.lineWidth = 5;
+        ctx.strokeRect(trayL + 3, boardT + 3, trayR - trayL - 6, boardB - boardT - 6);
+        drawStepLabel((trayL + trayR) / 2, (boardT + boardB) / 2, pv.step);
+      } else {
+        drawDestMarker(pv.to, pv.step);
+      }
+    }
+  }
+
   drawDice();
 }
 
-function drawDestMarker(p){
+function drawMovableGlow(p){
+  const c = colForPoint(p), x = xForCol(c), bottom = isBottom(p);
+  const cy = bottom ? boardB - R - 1 : boardT + R + 1;
+  ctx.strokeStyle = 'rgba(255,224,138,0.7)'; ctx.lineWidth = 3;
+  ctx.setLineDash([5, 5]);
+  ctx.beginPath(); ctx.arc(x, cy, R + 3, 0, 7); ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawStepLabel(x, y, step){
+  ctx.fillStyle = '#0c3a1f';
+  ctx.font = `bold ${Math.round(R * 0.95)}px Georgia`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(String(step), x, y);
+}
+
+function drawDestMarker(p, step){
   const c = colForPoint(p), x = xForCol(c), bottom = isBottom(p);
   const pt = STATE.points[p];
-  const n = pt.top === STATE.current ? pt.count : 0;
+  const n = (pt.top === STATE.current) ? pt.count : 0;       // land on top of own stack
   const cy = checkerY(bottom, n);
-  ctx.fillStyle = 'rgba(255,224,138,0.55)';
+  ctx.fillStyle = 'rgba(63,174,90,0.5)';
   ctx.strokeStyle = '#3fae5a'; ctx.lineWidth = 4;
-  ctx.beginPath(); ctx.arc(x, cy, R - 2, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.arc(x, cy, R - 1, 0, 7); ctx.fill(); ctx.stroke();
+  drawStepLabel(x, cy, step);
 }
 
 function checkerY(bottom, i){
@@ -596,18 +822,33 @@ function drawOffTray(){
 }
 
 function drawDice(){
-  if (!STATE.rolled || STATE.dicePool.length === 0) return;
-  const cx = boardL + quadW + BAR / 2;
-  const side = BAR - 12, gap = side + 8;
-  const n = STATE.dicePool.length;
-  let y0 = (boardT + boardB) / 2 - (n * gap - 8) / 2;
+  let pool;
+  if (ROLLING && ANIM_DICE) pool = ANIM_DICE.map(v => ({ v, used:false }));
+  else if (STATE.rolled && STATE.dicePool.length) pool = STATE.dicePool;
+  else return;
+
+  const DS = 72, GAP = 16;                       // big, easy-to-read dice
+  const n = pool.length;
+  const totalW = n * DS + (n - 1) * GAP;
+  const cx = (boardL + boardR) / 2;
+  const x0 = cx - totalW / 2;
+  const y  = (boardT + boardB) / 2 - DS / 2;
   for (let k = 0; k < n; k++){
-    const d = STATE.dicePool[k];
-    const x = cx - side / 2, y = y0 + k * gap;
-    ctx.fillStyle = d.used ? '#6b6b6b' : '#f7f3e7';
-    roundRect(x, y, side, side, 7); ctx.fill();
-    ctx.strokeStyle = '#222'; ctx.lineWidth = 1.5; roundRect(x, y, side, side, 7); ctx.stroke();
-    drawPips(x, y, side, d.v, d.used);
+    const d = pool[k];
+    const x = x0 + k * (DS + GAP);
+    ctx.save();
+    if (ROLLING){                                // jitter + tilt while tumbling
+      ctx.translate(x + DS/2, y + DS/2);
+      ctx.rotate((Math.random() - 0.5) * 0.5);
+      ctx.translate(-(x + DS/2), -(y + DS/2));
+    }
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';          // shadow
+    roundRect(x + 3, y + 5, DS, DS, 12); ctx.fill();
+    ctx.fillStyle = d.used ? '#9a9a8f' : '#faf6ea';
+    roundRect(x, y, DS, DS, 12); ctx.fill();
+    ctx.strokeStyle = '#222'; ctx.lineWidth = 2.5; roundRect(x, y, DS, DS, 12); ctx.stroke();
+    drawPips(x, y, DS, d.v, d.used);
+    ctx.restore();
   }
 }
 
@@ -636,38 +877,54 @@ function roundRect(x, y, w, h, r){
    ========================================================================= */
 
 cv.addEventListener('click', e => {
-  if (!STATE || STATE.phase !== 'move' || AI_BUSY) return;
+  if (!STATE || STATE.phase !== 'move' || AI_BUSY || ROLLING) return;
   if (STATE.mode === 'ai' && STATE.current !== HUMAN) return;
+  Sound.unlock();
 
   const rect = cv.getBoundingClientRect();
   const x = (e.clientX - rect.left) * (W / rect.width);
   const y = (e.clientY - rect.top)  * (H / rect.height);
 
-  // bear-off tray click
-  if (x >= trayL && SELECTED !== null){
-    const m = legalMoves(STATE, STATE.current)
-      .filter(mm => mm.from === SELECTED && mm.to === 'off')
-      .sort((a,b) => a.die - b.die)[0];
-    if (m){ humanMove(m); return; }
+  // if a piece is picked up, a click on one of its preview stops plays the
+  // whole hop sequence (1 die for a single step, more for a multi-step chain)
+  if (SELECTED !== null){
+    const previews = pieceMovePreviews(STATE, STATE.current, SELECTED);
+    if (x >= trayL){                                   // bear-off tray
+      const pv = previews.filter(p => p.to === 'off').sort((a,b) => a.step - b.step)[0];
+      if (pv){ humanPlaySeq(pv.seq); return; }
+    }
+    const col = colFromX(x);
+    if (col >= 0){
+      const p = pointFromColRow(col, y > H / 2);
+      const pv = previews.find(pp => pp.to === p);
+      if (pv){ humanPlaySeq(pv.seq); return; }
+    }
   }
 
+  // otherwise (re)select a source point — but only if that piece can actually move
   const col = colFromX(x);
   if (col < 0){ SELECTED = null; draw(); return; }
-  const bottom = y > H / 2;
-  const p = pointFromColRow(col, bottom);
-
-  if (SELECTED !== null){
-    const m = legalMoves(STATE, STATE.current).find(mm => mm.from === SELECTED && mm.to === p);
-    if (m){ humanMove(m); return; }
-  }
-  // (re)select a source point that holds one of the current player's checkers
+  const p = pointFromColRow(col, y > H / 2);
   const pt = STATE.points[p];
-  if (pt.top === STATE.current && pt.count >= 1){
+  if (pt.top === STATE.current && pt.count >= 1 &&
+      pieceMovePreviews(STATE, STATE.current, p).length > 0){
     SELECTED = (SELECTED === p ? null : p);
   } else {
     SELECTED = null;
   }
   draw();
+});
+
+/* ---------- keyboard: Space = roll the dice ---------- */
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' || e.key === ' '){
+    if (STATE && document.getElementById('game').style.display !== 'none'){
+      e.preventDefault();
+      Sound.unlock();
+      const isHumanTurn = STATE.mode === 'hotseat' || STATE.current === HUMAN;
+      if (STATE.phase === 'await' && isHumanTurn && !AI_BUSY && !ROLLING) onRoll();
+    }
+  }
 });
 
 /* =========================================================================
