@@ -831,23 +831,43 @@ function announceWin(){
    ========================================================================= */
 
 // position score from player p's point of view; higher is better
+// chance (out of 36) that a single die / combo total `n` can be rolled — used to
+// weight how exposed a blot is by the real probability of being hit.
+const HIT_ODDS = {1:11,2:12,3:14,4:15,5:15,6:17,7:6,8:6,9:5,10:3,11:2,12:3};
+
 function scoreFor(st, p){
   const o = opp(p);
-  let trapByMe = 0, trapAgainst = 0, myBlots = 0;
+  let trapByMe = 0, trapAgainst = 0, blotRisk = 0, made = 0, prime = 0, homeMine = 0, backMine = 0;
+  let lastMade = -9;
   for (let i = 1; i <= 24; i++){
     const pt = st.points[i];
-    if (pt.trapped === o) trapByMe++;        // I'm sitting on an enemy prisoner
-    if (pt.trapped === p) trapAgainst++;     // one of mine is imprisoned
-    if (pt.top === p && pt.count === 1 && pt.trapped === null){
-      // a blot is exposed if an enemy checker is within 6 pips able to reach it
-      if (o === 'W'){ for (let k = i+1; k <= Math.min(24, i+6); k++) if (st.points[k].top === 'W'){ myBlots++; break; } }
-      else          { for (let k = i-1; k >= Math.max(1, i-6); k--) if (st.points[k].top === 'B'){ myBlots++; break; } }
+    if (pt.trapped === o) trapByMe++;        // I'm sitting on an enemy prisoner (great)
+    if (pt.trapped === p) trapAgainst++;     // one of mine is imprisoned (bad)
+    if (pt.top === p){
+      if (pt.count >= 2){                    // a "made" point — blocks the opponent
+        made++;
+        if (i === lastMade + 1) prime++;     // consecutive made points = a wall
+        lastMade = i;
+      }
+      if (inHome(p, i)) homeMine += pt.count; // checkers ready to bear off
+      // deep "back" checkers (still in the opponent's home) — fewer is better
+      if ((p === 'W' && i >= 19) || (p === 'B' && i <= 6)) backMine += pt.count;
+      // a lone checker's exposure, weighted by the odds the opponent hits it
+      if (pt.count === 1 && pt.trapped === null){
+        let dist = 0;
+        if (o === 'W'){ for (let k = i+1; k <= Math.min(24, i+6); k++) if (st.points[k].top === 'W'){ dist = k - i; break; } }
+        else          { for (let k = i-1; k >= Math.max(1, i-6); k--) if (st.points[k].top === 'B'){ dist = i - k; break; } }
+        if (dist > 0) blotRisk += (HIT_ODDS[dist] || 0);
+      }
     }
   }
   return (pipCount(st, o) - pipCount(st, p))
-       + (trapByMe - trapAgainst) * 26
-       + (st.off[p] - st.off[o]) * 30
-       - myBlots * 8;
+       + (trapByMe - trapAgainst) * 30
+       + (st.off[p] - st.off[o]) * 32
+       + made * 4 + prime * 9        // reward points and walls
+       + homeMine * 1.5             // reward getting checkers home
+       - backMine * 2               // discourage leaving stragglers far back
+       - blotRisk * 0.8;            // probability-weighted blot penalty
 }
 
 function sig(st){
@@ -925,27 +945,31 @@ function aiCandidates(start, nodeCap){
   return out;
 }
 
-// Hard: among the top candidates, pick the one that leaves White worst off
-// (expectimax over White's 21 possible rolls, using White's best greedy reply)
+// Hard: full expectimax. Take the AI's strongest candidate turns and, for each,
+// average over ALL 21 of White's possible replies (using White's own best turn),
+// then pick the line that leaves White worst off. Worst-case ("min") risk is also
+// folded in so the AI avoids lines that get punished badly by an unlucky roll.
 function hardSequence(start){
-  const cands = aiCandidates(start, 40000);
+  const cands = aiCandidates(start, 120000);
   if (cands.length === 0) return [];
   cands.sort((a,b) => b.score - a.score);
-  const top = cands.slice(0, 6);
+  const top = cands.slice(0, 12);             // weigh more candidate turns
   let best = null, bestVal = -Infinity;
   for (const c of top){
     if (c.end.phase === 'over'){ return c.seq; } // a winning line — take it
-    let total = 0, wsum = 0;
+    let total = 0, wsum = 0, worst = Infinity;
     for (let d1 = 1; d1 <= 6; d1++){
       for (let d2 = d1; d2 <= 6; d2++){
         const w = (d1 === d2) ? 1 : 2;          // probability weight of this roll
         const ws = clone(c.end); ws.current = 'W'; ws.dicePool = makePool(d1, d2);
-        total += w * bestPlay(ws, 'W', 6000).score; // White's best position after replying
-        wsum  += w;
+        const wScore = bestPlay(ws, 'W', 12000).score;   // White's best reply
+        total += w * wScore; wsum += w;
+        if (wScore < worst) worst = wScore;     // White's nastiest reply to us
       }
     }
     const expWhite = total / wsum;
-    const val = c.score * 0.3 - expWhite;       // good for me AND bad for White
+    // good for me, bad for White on average, and not catastrophic in the worst case
+    const val = c.score * 0.4 - expWhite - Math.max(0, worst) * 0.12;
     if (val > bestVal){ bestVal = val; best = c; }
   }
   return best.seq;
@@ -953,9 +977,11 @@ function hardSequence(start){
 
 function aiTurn(){
   if (!STATE || STATE.phase === 'over') return;
+  const g = GEN;
   AI_BUSY = true;
   STATE.phase = 'move';
   animateRoll(AI, () => {
+    if (g !== GEN) return;
     let seq;
     if      (STATE.level === 'easy') seq = randomSequence(STATE);
     else if (STATE.level === 'hard') seq = hardSequence(STATE);
@@ -963,7 +989,7 @@ function aiTurn(){
 
     if (seq.length === 0){
       toast('אין למחשב מהלך.');
-      setTimeout(() => { AI_BUSY = false; endTurn(); }, 1400);
+      setTimeout(() => { if (g !== GEN) return; AI_BUSY = false; endTurn(); }, 1400);
       return;
     }
     // Play the computer's moves SLOWLY and very visibly, so it's easy to follow:
@@ -973,6 +999,7 @@ function aiTurn(){
     const SHOW_AFTER  = 1300;   // look at where it went
     let i = 0;
     function step(){
+      if (g !== GEN) return;
       if (i >= seq.length || STATE.phase === 'over'){
         AI_HIGHLIGHT = null; AI_BUSY = false;
         if (STATE.phase === 'over') announceWin();
@@ -983,7 +1010,9 @@ function aiTurn(){
       AI_HIGHLIGHT = { from: m.from, to: null };   // "this is the piece I'll move"
       draw(); updateUI();
       setTimeout(() => {
+        if (g !== GEN) return;
         animateMove(m, STATE.current, () => {      // glide it along the curve
+          if (g !== GEN) return;
           playMoveSound(STATE, m);
           applyMove(STATE, m);
           AI_HIGHLIGHT = { from: m.from, to: m.to }; // "...and here is where it went"
