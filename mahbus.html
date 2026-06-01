@@ -273,6 +273,7 @@ let SELECTED = null;         // point currently picked up (human)
 let HISTORY = [];            // undo snapshots for the current turn
 let AI_BUSY = false;
 let ORIENT = 'land';         // 'land' (wide) or 'port' (board rotated 90° for tall phones)
+let GEN = 0;                 // bumped on new game / menu — invalidates stale async callbacks
 const IS_TOUCH = !!(('ontouchstart' in window) || (navigator.maxTouchPoints > 0) ||
                     (window.matchMedia && window.matchMedia('(pointer:coarse)').matches)); // phone/tablet
 
@@ -472,6 +473,9 @@ function startGame(mode, level){
   SELECTED = null;
   HISTORY = [];
   AI_BUSY = false;
+  GEN++;                                   // invalidate any in-flight async callbacks
+  clearInterval(animTimer); clearInterval(confettiTimer);
+  ROLLING = false; ANIM = null; ANIM_DICE = null; AI_HIGHLIGHT = null; CONFETTI = [];
   Sound.unlock();
   document.getElementById('wincard').classList.remove('show');
   document.getElementById('menu').style.display = 'none';
@@ -482,6 +486,9 @@ function startGame(mode, level){
 }
 
 function toMenu(){
+  GEN++;                                   // stop any in-flight computer turn / animation
+  AI_BUSY = false; ROLLING = false; ANIM = null; AI_HIGHLIGHT = null;
+  clearInterval(animTimer);
   document.getElementById('game').style.display = 'none';
   document.getElementById('menu').style.display = 'flex';
   requestAnimationFrame(fitMenu);
@@ -637,15 +644,17 @@ function pipCount(st, p){
 
 function onRoll(){
   if (!STATE || STATE.phase !== 'await' || AI_BUSY) return;
+  const g = GEN;
   AI_BUSY = true;                       // lock briefly during the tumble animation
   animateRoll(STATE.current, () => {
+    if (g !== GEN) return;
     AI_BUSY = false;
     STATE.phase = 'move';
     HISTORY = [];
     if (legalMoves(STATE, STATE.current).length === 0){
       toast('אין מהלכים חוקיים — התור עובר.');
       draw(); updateUI();
-      setTimeout(endTurn, 1100);
+      setTimeout(() => { if (g === GEN) endTurn(); }, 1100);
       return;
     }
     draw(); updateUI();
@@ -656,10 +665,12 @@ function onRoll(){
 let ROLLING = false, ANIM_DICE = null, animTimer = null, AI_HIGHLIGHT = null, ANIM = null;
 function animateRoll(player, done){
   Sound.roll();
+  const g = GEN;
   ROLLING = true; STATE.rolled = false; STATE.dicePool = [];
   let ticks = 0; const TOTAL = 11;
   clearInterval(animTimer);
   animTimer = setInterval(() => {
+    if (g !== GEN){ clearInterval(animTimer); return; }   // a new game started — abort
     ANIM_DICE = [1 + Math.floor(Math.random()*6), 1 + Math.floor(Math.random()*6)];
     draw();
     if (++ticks >= TOTAL){
@@ -740,21 +751,24 @@ function animateMove(m, owner, done){
 // play a sequence of one piece's moves for the human, gliding each hop
 function humanPlaySeq(seq){
   if (seq.length === 0) return;
+  const g = GEN;
   AI_BUSY = true; SELECTED = null;
   let i = 0;
   (function step(){
+    if (g !== GEN) return;              // a new game started mid-move — abort
     if (i >= seq.length){
       AI_BUSY = false; draw(); updateUI();
       if (STATE.phase === 'over'){ announceWin(); return; }
       if (legalMoves(STATE, STATE.current).length === 0){
         if (unusedValues(STATE).length > 0) toast('אין עוד מהלכים אפשריים.');
-        setTimeout(endTurn, 700);
+        setTimeout(() => { if (g === GEN) endTurn(); }, 700);
       }
       return;
     }
     const m = seq[i++], owner = STATE.current;
     HISTORY.push(clone(STATE));
     animateMove(m, owner, () => {
+      if (g !== GEN) return;
       playMoveSound(STATE, m);          // sound on landing
       applyMove(STATE, m);
       draw(); updateUI();
@@ -789,7 +803,10 @@ function endTurn(){
   SELECTED = null;
   HISTORY = [];
   draw(); updateUI();
-  if (STATE.mode === 'ai' && STATE.current === AI) setTimeout(aiTurn, 650);
+  if (STATE.mode === 'ai' && STATE.current === AI){
+    const g = GEN;
+    setTimeout(() => { if (g === GEN) aiTurn(); }, 650);
+  }
 }
 
 let winTimer = null;
