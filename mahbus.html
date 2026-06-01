@@ -1116,15 +1116,14 @@ function draw(){
   // which piece goes where (important on the rotated portrait board).
   if (interactive && sel !== null){
     const sx = xForCol(colForPoint(sel)), sBottom = isBottom(sel), sPt = STATE.points[sel];
-    const sN = Math.min((sPt.trapped ? 1 : 0) + (sPt.top ? Math.max(0, sPt.count - 1) : 0), 5);
-    const sy = checkerY(sBottom, sN);
+    const sy = checkerY(sBottom, topVisibleSlot(sPt));
     for (const pv of previews){
       let dx, dy;
       if (pv.to === 'off'){ dx = (trayL + trayR) / 2; dy = (boardT + boardB) / 2; }
       else {
         const dp = STATE.points[pv.to];
         dx = xForCol(colForPoint(pv.to));
-        dy = checkerY(isBottom(pv.to), Math.min((dp.trapped ? 1 : 0) + (dp.top ? dp.count : 0), 5));
+        dy = checkerY(isBottom(pv.to), (dp.top || dp.trapped) ? topVisibleSlot(dp) : 0);
       }
       ctx.strokeStyle = 'rgba(63,174,90,0.6)'; ctx.lineWidth = 3; ctx.setLineDash([7, 5]);
       ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(dx, dy); ctx.stroke();
@@ -1329,6 +1328,15 @@ function drawConfetti(){
   }
 }
 
+// slot index of the topmost *visible* checker on a point (accounts for the cap
+// that keeps tall stacks inside the triangle, and the trapped checker at the base)
+function topVisibleSlot(pt){
+  if (!pt.top) return pt.trapped !== null ? 0 : 0;
+  const base = pt.trapped !== null ? 1 : 0;
+  const cap  = pt.trapped !== null ? 4 : 5;
+  return base + Math.min(pt.count, cap) - 1;
+}
+
 function drawPointRing(p, color){
   if (p === 'off'){
     ctx.strokeStyle = color; ctx.lineWidth = 7;
@@ -1337,9 +1345,7 @@ function drawPointRing(p, color){
   }
   const c = colForPoint(p), x = xForCol(c), bottom = isBottom(p);
   const pt = STATE.points[p];
-  const trapOff = pt.trapped !== null ? 1 : 0;
-  const n = Math.min(pt.top ? trapOff + pt.count - 1 : 0, 5);   // clamp to visible stack
-  const cy = checkerY(bottom, n);
+  const cy = checkerY(bottom, topVisibleSlot(pt));     // ring the actual top checker
   ctx.strokeStyle = color; ctx.lineWidth = 7;
   ctx.beginPath(); ctx.arc(x, cy, R + 7, 0, 7); ctx.stroke();
 }
@@ -1360,8 +1366,9 @@ function drawStepLabel(x, y, step){
 function drawDestMarker(p, step){
   const c = colForPoint(p), x = xForCol(c), bottom = isBottom(p);
   const pt = STATE.points[p];
-  // land just above the visible stack — clamp so tall stacks don't push it off-board
-  const n = Math.min((pt.trapped !== null ? 1 : 0) + (pt.top ? pt.count : 0), 5);
+  // land just above the current top checker, but never past the visible cap
+  const cap = (pt.trapped !== null ? 1 : 0) + (pt.trapped !== null ? 4 : 5);
+  const n = (pt.top || pt.trapped) ? Math.min(topVisibleSlot(pt) + 1, cap) : 0;
   const cy = checkerY(bottom, n);
   ctx.fillStyle = 'rgba(63,174,90,0.5)';
   ctx.strokeStyle = '#3fae5a'; ctx.lineWidth = 4;
