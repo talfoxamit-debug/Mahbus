@@ -476,7 +476,16 @@ function startGame(mode, level){
   GEN++;                                   // invalidate any in-flight async callbacks
   clearInterval(animTimer); clearInterval(confettiTimer);
   ROLLING = false; ANIM = null; ANIM_DICE = null; AI_HIGHLIGHT = null; CONFETTI = [];
+  // Hard mode: pick a random opponent "personality"; other levels play balanced
+  AI_PROFILE = (mode === 'ai' && STATE.level === 'hard')
+    ? AI_PROFILES[(Math.random() * AI_PROFILES.length) | 0]
+    : AI_PROFILES[4];
+  STATE.aiProfile = (mode === 'ai' && STATE.level === 'hard') ? AI_PROFILE : null;
   Sound.unlock();
+  if (STATE.aiProfile){
+    const pr = STATE.aiProfile;
+    toast(`היריב שלך: ${pr.emoji} ${pr.name} — ${pr.desc}`, 3500);
+  }
   document.getElementById('wincard').classList.remove('show');
   document.getElementById('menu').style.display = 'none';
   document.getElementById('game').style.display = 'flex';
@@ -835,8 +844,25 @@ function announceWin(){
 // weight how exposed a blot is by the real probability of being hit.
 const HIT_ODDS = {1:11,2:12,3:14,4:15,5:15,6:17,7:6,8:6,9:5,10:3,11:2,12:3};
 
+// Hard-mode "personalities": each weights the evaluation differently, giving a
+// distinct playing style. One is chosen at random per game (see startGame).
+const AI_PROFILES = [
+  { name:'דריוש',   fa:'داریوش',   emoji:'🦂', desc:'לוכד אגרסיבי',
+    trap:46, race:1.0, off:30, made:3, prime:7,  home:1.2, back:1,   blot:0.45 },
+  { name:'כורש',    fa:'کوروش',    emoji:'🛡️', desc:'הגנתי וזהיר',
+    trap:24, race:1.0, off:30, made:7, prime:14, home:1.5, back:2,   blot:1.6  },
+  { name:'רוסטם',   fa:'رستم',     emoji:'🏇', desc:'רץ מהיר',
+    trap:18, race:1.7, off:46, made:2, prime:4,  home:2.4, back:3,   blot:0.8  },
+  { name:'ארדשיר',  fa:'اردشیر',   emoji:'🧱', desc:'בונה חומות',
+    trap:26, race:1.0, off:30, made:9, prime:18, home:1.4, back:2,   blot:1.0  },
+  { name:'שירין',   fa:'شیرین',    emoji:'⚖️', desc:'מאוזנת',
+    trap:32, race:1.1, off:34, made:5, prime:10, home:1.6, back:2,   blot:0.9  },
+];
+let AI_PROFILE = AI_PROFILES[4];   // default; replaced per game for Hard
+
 function scoreFor(st, p){
   const o = opp(p);
+  const w = (p === AI) ? AI_PROFILE : AI_PROFILES[4];   // opponent modelled as balanced
   let trapByMe = 0, trapAgainst = 0, blotRisk = 0, made = 0, prime = 0, homeMine = 0, backMine = 0;
   let lastMade = -9;
   for (let i = 1; i <= 24; i++){
@@ -861,13 +887,13 @@ function scoreFor(st, p){
       }
     }
   }
-  return (pipCount(st, o) - pipCount(st, p))
-       + (trapByMe - trapAgainst) * 30
-       + (st.off[p] - st.off[o]) * 32
-       + made * 4 + prime * 9        // reward points and walls
-       + homeMine * 1.5             // reward getting checkers home
-       - backMine * 2               // discourage leaving stragglers far back
-       - blotRisk * 0.8;            // probability-weighted blot penalty
+  return (pipCount(st, o) - pipCount(st, p)) * w.race
+       + (trapByMe - trapAgainst) * w.trap
+       + (st.off[p] - st.off[o]) * w.off
+       + made * w.made + prime * w.prime
+       + homeMine * w.home
+       - backMine * w.back
+       - blotRisk * w.blot;
 }
 
 function sig(st){
@@ -1552,7 +1578,9 @@ function updateUI(){
     const w = STATE.winner === 'W' ? 'הלבן' : 'השחור';
     banner.textContent = (STATE.mode === 'ai' && STATE.winner === HUMAN) ? '🎉 ניצחת!' : `🎉 ${w} ניצח!`;
   } else if (STATE.mode === 'ai' && STATE.current === AI){
-    banner.textContent = '🤖 המחשב חושב…';
+    banner.textContent = STATE.aiProfile
+      ? `${STATE.aiProfile.emoji} ${STATE.aiProfile.name} חושב…`
+      : '🤖 המחשב חושב…';
   } else if (STATE.phase === 'await'){
     banner.textContent = `תור ${name} — הטל את הקוביות`;
   } else {
