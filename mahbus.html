@@ -36,6 +36,24 @@
     box-shadow:0 0 0 3px rgba(201,164,60,.18);
   }
   #gametitle .fa{font-size:clamp(.75rem,2.4vw,1.4rem); opacity:.9; font-weight:normal;}
+  /* opponent intro card (Hard mode) */
+  #oppcard{
+    position:fixed; left:50%; top:50%; transform:translate(-50%,-50%) scale(.8);
+    background:linear-gradient(160deg,#2a3640,#1a242c);
+    border:2px solid #c9a43c; border-radius:20px;
+    box-shadow:0 0 0 6px rgba(201,164,60,.22), 0 18px 50px rgba(0,0,0,.65);
+    padding:28px 38px; color:#e9c46a; z-index:70; max-width:88%; text-align:center;
+    opacity:0; pointer-events:none; transition:opacity .45s, transform .45s;
+  }
+  #oppcard.show{opacity:1; transform:translate(-50%,-50%) scale(1); pointer-events:auto;}
+  #oppcard .opp-orn{color:#c9a43c; letter-spacing:.4em; font-size:1.1rem;}
+  #oppcard .opp-emoji{font-size:4.2rem; line-height:1.1; margin:6px 0;
+    filter:drop-shadow(0 3px 6px rgba(0,0,0,.5));}
+  #oppcard .opp-vs{font-size:1.05rem; color:#cdbf9f; letter-spacing:.2em;}
+  #oppcard .opp-name{font-size:2.5rem; font-weight:bold; margin:2px 0;}
+  #oppcard .opp-fa{font-size:1.4rem; opacity:.85; margin-bottom:6px;}
+  #oppcard .opp-desc{font-size:1.5rem; color:#f4ead2;
+    border-top:1px solid rgba(201,164,60,.4); padding-top:10px; margin-top:8px;}
   /* win celebration card */
   #wincard{
     position:fixed; left:50%; top:42%; transform:translate(-50%,-50%) scale(.9);
@@ -188,6 +206,16 @@
 <body>
 
 <div id="toast"></div>
+
+<!-- opponent intro card (Hard mode), tap to dismiss -->
+<div id="oppcard" onclick="this.classList.remove('show')">
+  <div class="opp-orn">✦ ❖ ✦</div>
+  <div class="opp-emoji" id="oppEmoji">🦂</div>
+  <div class="opp-vs">היריב שלך</div>
+  <div class="opp-name" id="oppName">—</div>
+  <div class="opp-fa" id="oppFa">—</div>
+  <div class="opp-desc" id="oppDesc">—</div>
+</div>
 
 <!-- tiny floating controls (mobile only): undo / sound / home -->
 <div id="mobctl">
@@ -482,22 +510,33 @@ function startGame(mode, level){
     : AI_PROFILES[4];
   STATE.aiProfile = (mode === 'ai' && STATE.level === 'hard') ? AI_PROFILE : null;
   Sound.unlock();
+  document.getElementById('wincard').classList.remove('show');
+  const oc = document.getElementById('oppcard');
   if (STATE.aiProfile){
     const pr = STATE.aiProfile;
-    toast(`היריב שלך: ${pr.emoji} ${pr.name} — ${pr.desc}`, 3500);
+    document.getElementById('oppEmoji').textContent = pr.emoji;
+    document.getElementById('oppName').textContent  = pr.name;
+    document.getElementById('oppFa').textContent    = pr.fa;
+    document.getElementById('oppDesc').textContent  = pr.desc;
+    oc.classList.add('show');
+    clearTimeout(oppTimer);
+    oppTimer = setTimeout(() => oc.classList.remove('show'), 4200);
+  } else {
+    oc.classList.remove('show');
   }
-  document.getElementById('wincard').classList.remove('show');
   document.getElementById('menu').style.display = 'none';
   document.getElementById('game').style.display = 'flex';
   draw();
   updateUI();
   requestAnimationFrame(fitGameCanvas);
 }
+let oppTimer = null;
 
 function toMenu(){
   GEN++;                                   // stop any in-flight computer turn / animation
   AI_BUSY = false; ROLLING = false; ANIM = null; AI_HIGHLIGHT = null;
   clearInterval(animTimer);
+  document.getElementById('oppcard').classList.remove('show');
   document.getElementById('game').style.display = 'none';
   document.getElementById('menu').style.display = 'flex';
   requestAnimationFrame(fitMenu);
@@ -1233,59 +1272,88 @@ let BG = null;
 function buildBoard(){
   BG = document.createElement('canvas'); BG.width = W; BG.height = H;
   const g = BG.getContext('2d');
+  const mid = (boardT + boardB) / 2;
 
-  // wooden frame with vertical grain
+  // deep wooden frame with rich vertical grain + darker edges
   const frame = g.createLinearGradient(0, 0, 0, H);
-  frame.addColorStop(0, '#8a5527'); frame.addColorStop(0.5, '#5b3618'); frame.addColorStop(1, '#6e4220');
+  frame.addColorStop(0, '#7a4a22'); frame.addColorStop(0.18, '#5b3618');
+  frame.addColorStop(0.5, '#43280f'); frame.addColorStop(0.82, '#5b3618'); frame.addColorStop(1, '#6e4220');
   g.fillStyle = frame; g.fillRect(0, 0, W, H);
-  g.globalAlpha = 0.06; g.strokeStyle = '#2c1a0c'; g.lineWidth = 1;
-  for (let i = 0; i < 70; i++){
+  g.globalAlpha = 0.07; g.lineWidth = 1;
+  for (let i = 0; i < 110; i++){
     const yy = Math.random() * H;
+    g.strokeStyle = (i % 2) ? '#2c1a0c' : '#9c6a38';
     g.beginPath(); g.moveTo(0, yy);
-    g.bezierCurveTo(W*0.33, yy + (Math.random()*8-4), W*0.66, yy + (Math.random()*8-4), W, yy);
+    g.bezierCurveTo(W*0.33, yy + (Math.random()*10-5), W*0.66, yy + (Math.random()*10-5), W, yy);
     g.stroke();
   }
   g.globalAlpha = 1;
+  // soft inner shadow where the frame meets the playfield (gives depth)
+  g.save();
+  g.shadowColor = 'rgba(0,0,0,0.55)'; g.shadowBlur = 18;
+  g.fillStyle = 'rgba(0,0,0,0.001)';
+  g.fillRect(boardL - 2, boardT - 2, boardR - boardL + 4, boardB - boardT + 4);
+  g.restore();
 
-  // felt with a soft centre sheen
-  const felt = g.createRadialGradient((boardL+boardR)/2, (boardT+boardB)/2, 30, (boardL+boardR)/2, (boardT+boardB)/2, 540);
-  felt.addColorStop(0, '#16683f'); felt.addColorStop(1, '#0b4126');
+  // felt: vertical gradient + a soft centre sheen + edge vignette
+  const felt = g.createLinearGradient(0, boardT, 0, boardB);
+  felt.addColorStop(0, '#0c4327'); felt.addColorStop(0.5, '#15663d'); felt.addColorStop(1, '#0c4327');
   g.fillStyle = felt; g.fillRect(boardL, boardT, boardR - boardL, boardB - boardT);
+  const sheen = g.createRadialGradient((boardL+boardR)/2, mid, 20, (boardL+boardR)/2, mid, 560);
+  sheen.addColorStop(0, 'rgba(255,255,255,0.07)'); sheen.addColorStop(1, 'rgba(0,0,0,0.18)');
+  g.fillStyle = sheen; g.fillRect(boardL, boardT, boardR - boardL, boardB - boardT);
 
   // home-zone shading (right side: White home = bottom 1-6, Black home = top 19-24)
-  const mid = (boardT + boardB) / 2, zx = boardL + quadW + BAR, zw = boardR - zx;
-  g.fillStyle = 'rgba(244,234,210,0.10)'; g.fillRect(zx, mid, zw, boardB - mid);   // White home
-  g.fillStyle = 'rgba(120,170,255,0.10)'; g.fillRect(zx, boardT, zw, mid - boardT); // Black home
+  const zx = boardL + quadW + BAR, zw = boardR - zx;
+  g.fillStyle = 'rgba(244,234,210,0.09)'; g.fillRect(zx, mid, zw, boardB - mid);   // White home
+  g.fillStyle = 'rgba(120,170,255,0.09)'; g.fillRect(zx, boardT, zw, mid - boardT); // Black home
 
-  // triangles in Persian tile colours (terracotta / lapis) with gold edging
+  // triangles in Persian tile colours with a glossy vertical sheen + crisp gold tip
   for (let p = 1; p <= 24; p++){
     const c = colForPoint(p), x = xForCol(c), bottom = isBottom(p);
-    g.fillStyle = (c % 2 === 0) ? '#a8432f' : '#27508c';   // terracotta & lapis
+    const baseY = bottom ? boardB : boardT, tipY = bottom ? boardB - ptLen : boardT + ptLen;
+    const terra = (c % 2 === 0);
+    const grad = g.createLinearGradient(0, baseY, 0, tipY);
+    if (terra){ grad.addColorStop(0, '#c1543b'); grad.addColorStop(1, '#7f2f20'); }
+    else      { grad.addColorStop(0, '#2f5ea0'); grad.addColorStop(1, '#1c3a68'); }
+    g.fillStyle = grad;
     g.beginPath();
-    if (bottom){ g.moveTo(x - slotW*0.46, boardB); g.lineTo(x + slotW*0.46, boardB); g.lineTo(x, boardB - ptLen); }
-    else       { g.moveTo(x - slotW*0.46, boardT); g.lineTo(x + slotW*0.46, boardT); g.lineTo(x, boardT + ptLen); }
+    g.moveTo(x - slotW*0.46, baseY); g.lineTo(x + slotW*0.46, baseY); g.lineTo(x, tipY);
     g.closePath(); g.fill();
-    g.strokeStyle = 'rgba(201,164,60,0.55)'; g.lineWidth = 1.5; g.stroke();
+    // glossy highlight down the centre
+    g.fillStyle = 'rgba(255,255,255,0.08)';
+    g.beginPath();
+    g.moveTo(x - slotW*0.12, baseY); g.lineTo(x + slotW*0.12, baseY); g.lineTo(x, tipY);
+    g.closePath(); g.fill();
+    g.strokeStyle = 'rgba(201,164,60,0.5)'; g.lineWidth = 1.5;
+    g.beginPath();
+    g.moveTo(x - slotW*0.46, baseY); g.lineTo(x + slotW*0.46, baseY); g.lineTo(x, tipY);
+    g.closePath(); g.stroke();
   }
 
-  // bar
+  // centre bar — rounded wooden spine with highlight
   const barG = g.createLinearGradient(boardL+quadW, 0, boardL+quadW+BAR, 0);
-  barG.addColorStop(0, '#4a2c14'); barG.addColorStop(0.5, '#774727'); barG.addColorStop(1, '#4a2c14');
+  barG.addColorStop(0, '#3a2410'); barG.addColorStop(0.5, '#80502b'); barG.addColorStop(1, '#3a2410');
   g.fillStyle = barG; g.fillRect(boardL + quadW, boardT, BAR, boardB - boardT);
-  // Persian rosette medallions on the bar (top & bottom, clear of the dice)
+  g.fillStyle = 'rgba(255,225,160,0.15)'; g.fillRect(boardL + quadW + BAR/2 - 2, boardT, 3, boardB - boardT);
   const barCx = boardL + quadW + BAR/2;
-  drawRosette(g, barCx, boardT + 64, 15, '#d8b24a');
-  drawRosette(g, barCx, boardB - 64, 15, '#d8b24a');
+  drawRosette(g, barCx, boardT + 64, 15, '#e7c45a');
+  drawRosette(g, barCx, mid, 18, '#e7c45a');
+  drawRosette(g, barCx, boardB - 64, 15, '#e7c45a');
 
-  // bear-off tray
-  g.fillStyle = '#241710'; g.fillRect(trayL, boardT, trayR - trayL, boardB - boardT);
+  // bear-off tray — recessed with a felt-like inner gradient
+  const tray = g.createLinearGradient(trayL, 0, trayR, 0);
+  tray.addColorStop(0, '#1a1109'); tray.addColorStop(0.5, '#2c1d11'); tray.addColorStop(1, '#1a1109');
+  g.fillStyle = tray; g.fillRect(trayL, boardT, trayR - trayL, boardB - boardT);
 
-  // gold trim around the felt, bar and tray
-  g.strokeStyle = '#c9a43c'; g.lineWidth = 2.5;
+  // double gold trim with a thin dark separation for a "framed" look
+  g.strokeStyle = '#caa23a'; g.lineWidth = 3;
   g.strokeRect(boardL, boardT, boardR - boardL, boardB - boardT);
   g.strokeRect(trayL, boardT, trayR - trayL, boardB - boardT);
-  g.strokeStyle = 'rgba(201,164,60,0.5)'; g.lineWidth = 1;
-  g.strokeRect(boardL + 4, boardT + 4, boardR - boardL - 8, boardB - boardT - 8);
+  g.strokeStyle = 'rgba(0,0,0,0.4)'; g.lineWidth = 1;
+  g.strokeRect(boardL + 2, boardT + 2, boardR - boardL - 4, boardB - boardT - 4);
+  g.strokeStyle = 'rgba(231,196,90,0.4)'; g.lineWidth = 1;
+  g.strokeRect(boardL + 5, boardT + 5, boardR - boardL - 10, boardB - boardT - 10);
   // (home labels are drawn per-frame in drawHomeLabels so they stay upright in both orientations)
 }
 
