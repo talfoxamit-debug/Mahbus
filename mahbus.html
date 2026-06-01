@@ -1097,7 +1097,7 @@ function aiTurn(){
 const cv = document.getElementById('board');
 const ctx = cv.getContext('2d');
 const W = cv.width, H = cv.height;
-const M = 16, TRAY = 74, BAR = 40;
+const M = 30, TRAY = 74, BAR = 40;
 const boardL = M, boardR = W - M - TRAY, boardT = M, boardB = H - M;
 const quadW = (boardR - boardL - BAR) / 2;
 const slotW = quadW / 6;
@@ -1267,6 +1267,67 @@ function drawRosette(c, x, y, r, color){
   c.restore();
 }
 
+// rich procedural walnut wood, with grain arcs and a couple of knots
+function paintWood(g, x, y, w, h, base){
+  const grad = g.createLinearGradient(x, y, x, y + h);
+  grad.addColorStop(0, base[0]); grad.addColorStop(0.5, base[1]); grad.addColorStop(1, base[2]);
+  g.fillStyle = grad; g.fillRect(x, y, w, h);
+  g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip();
+  g.lineWidth = 1;
+  for (let i = 0; i < 140; i++){
+    const yy = y + Math.random() * h;
+    g.globalAlpha = 0.04 + Math.random() * 0.05;
+    g.strokeStyle = (i % 3 === 0) ? '#d8a866' : '#2a160a';
+    g.beginPath(); g.moveTo(x, yy);
+    g.bezierCurveTo(x + w*0.33, yy + (Math.random()*14-7), x + w*0.66, yy + (Math.random()*14-7), x + w, yy);
+    g.stroke();
+  }
+  // a few knots
+  for (let k = 0; k < 3; k++){
+    const kx = x + Math.random()*w, ky = y + Math.random()*h;
+    for (let r = 14; r > 0; r -= 2){
+      g.globalAlpha = 0.05; g.strokeStyle = '#1c0e05';
+      g.beginPath(); g.ellipse(kx, ky, r, r*0.6, Math.random(), 0, 7); g.stroke();
+    }
+  }
+  g.restore(); g.globalAlpha = 1;
+}
+
+// Khatam marquetry band: a repeating row of tiny 8-point stars in tile colours
+function paintMarquetry(g, x, y, w, h, horizontal){
+  const step = 18;
+  const cols = ['#c9a43c','#a8432f','#27508c','#1d6a3f','#e7d8ab'];
+  g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip();
+  g.fillStyle = '#16100a'; g.fillRect(x, y, w, h);
+  let idx = 0;
+  if (horizontal){
+    for (let cx = x + step/2; cx < x + w; cx += step){
+      g.fillStyle = cols[idx++ % cols.length];
+      starPath(g, cx, y + h/2, 4, h*0.42, h*0.16, Math.PI/4); g.fill();
+      g.strokeStyle = 'rgba(201,164,60,0.5)'; g.lineWidth = 0.8; g.stroke();
+    }
+  } else {
+    for (let cy = y + step/2; cy < y + h; cy += step){
+      g.fillStyle = cols[idx++ % cols.length];
+      starPath(g, x + w/2, cy, 4, w*0.42, w*0.16, Math.PI/4); g.fill();
+      g.strokeStyle = 'rgba(201,164,60,0.5)'; g.lineWidth = 0.8; g.stroke();
+    }
+  }
+  g.restore();
+}
+
+// a beveled gold rim around a rectangle (raised 3D look)
+function goldBevel(g, x, y, w, h, t){
+  const grad = g.createLinearGradient(x, y, x, y + h);
+  grad.addColorStop(0, '#f5e4a0'); grad.addColorStop(0.5, '#b8902f'); grad.addColorStop(1, '#7a5e1c');
+  g.strokeStyle = grad; g.lineWidth = t;
+  g.strokeRect(x, y, w, h);
+  g.strokeStyle = 'rgba(255,250,220,0.8)'; g.lineWidth = 1;
+  g.strokeRect(x - t/2 + 0.5, y - t/2 + 0.5, w + t - 1, h + t - 1);   // outer highlight
+  g.strokeStyle = 'rgba(60,40,10,0.7)'; g.lineWidth = 1;
+  g.strokeRect(x + t/2 - 0.5, y + t/2 - 0.5, w - t + 1, h - t + 1);   // inner shadow
+}
+
 /* ---------- cached board background (built once) ---------- */
 let BG = null;
 function buildBoard(){
@@ -1274,86 +1335,84 @@ function buildBoard(){
   const g = BG.getContext('2d');
   const mid = (boardT + boardB) / 2;
 
-  // deep wooden frame with rich vertical grain + darker edges
-  const frame = g.createLinearGradient(0, 0, 0, H);
-  frame.addColorStop(0, '#7a4a22'); frame.addColorStop(0.18, '#5b3618');
-  frame.addColorStop(0.5, '#43280f'); frame.addColorStop(0.82, '#5b3618'); frame.addColorStop(1, '#6e4220');
-  g.fillStyle = frame; g.fillRect(0, 0, W, H);
-  g.globalAlpha = 0.07; g.lineWidth = 1;
-  for (let i = 0; i < 110; i++){
-    const yy = Math.random() * H;
-    g.strokeStyle = (i % 2) ? '#2c1a0c' : '#9c6a38';
-    g.beginPath(); g.moveTo(0, yy);
-    g.bezierCurveTo(W*0.33, yy + (Math.random()*10-5), W*0.66, yy + (Math.random()*10-5), W, yy);
-    g.stroke();
-  }
-  g.globalAlpha = 1;
-  // soft inner shadow where the frame meets the playfield (gives depth)
+  // 1) outer walnut frame
+  paintWood(g, 0, 0, W, H, ['#7a4a22', '#4a2c12', '#5e3a1b']);
+
+  // 2) Khatam marquetry border band running just inside the outer edge
+  const bw = 12, m0 = 7;
+  paintMarquetry(g, m0, m0, W - 2*m0, bw, true);                       // top
+  paintMarquetry(g, m0, H - m0 - bw, W - 2*m0, bw, true);              // bottom
+  paintMarquetry(g, m0, m0, bw, H - 2*m0, false);                     // left
+  paintMarquetry(g, W - m0 - bw, m0, bw, H - 2*m0, false);            // right
+  goldBevel(g, m0, m0, W - 2*m0, H - 2*m0, 2);
+  goldBevel(g, m0 + bw, m0 + bw, W - 2*(m0+bw), H - 2*(m0+bw), 2);
+
+  // 3) recess shadow around the playfield for depth
   g.save();
-  g.shadowColor = 'rgba(0,0,0,0.55)'; g.shadowBlur = 18;
-  g.fillStyle = 'rgba(0,0,0,0.001)';
-  g.fillRect(boardL - 2, boardT - 2, boardR - boardL + 4, boardB - boardT + 4);
+  g.shadowColor = 'rgba(0,0,0,0.6)'; g.shadowBlur = 16; g.shadowOffsetY = 3;
+  g.fillStyle = '#0c4327';
+  g.fillRect(boardL, boardT, boardR - boardL, boardB - boardT);
   g.restore();
 
-  // felt: vertical gradient + a soft centre sheen + edge vignette
+  // 4) felt: vertical gradient + centre sheen + edge vignette
   const felt = g.createLinearGradient(0, boardT, 0, boardB);
-  felt.addColorStop(0, '#0c4327'); felt.addColorStop(0.5, '#15663d'); felt.addColorStop(1, '#0c4327');
+  felt.addColorStop(0, '#0b3f25'); felt.addColorStop(0.5, '#16693f'); felt.addColorStop(1, '#0b3f25');
   g.fillStyle = felt; g.fillRect(boardL, boardT, boardR - boardL, boardB - boardT);
-  const sheen = g.createRadialGradient((boardL+boardR)/2, mid, 20, (boardL+boardR)/2, mid, 560);
-  sheen.addColorStop(0, 'rgba(255,255,255,0.07)'); sheen.addColorStop(1, 'rgba(0,0,0,0.18)');
+  const sheen = g.createRadialGradient((boardL+boardR)/2, mid, 20, (boardL+boardR)/2, mid, 580);
+  sheen.addColorStop(0, 'rgba(255,255,255,0.08)'); sheen.addColorStop(0.7, 'rgba(0,0,0,0.05)');
+  sheen.addColorStop(1, 'rgba(0,0,0,0.28)');
   g.fillStyle = sheen; g.fillRect(boardL, boardT, boardR - boardL, boardB - boardT);
 
   // home-zone shading (right side: White home = bottom 1-6, Black home = top 19-24)
   const zx = boardL + quadW + BAR, zw = boardR - zx;
-  g.fillStyle = 'rgba(244,234,210,0.09)'; g.fillRect(zx, mid, zw, boardB - mid);   // White home
-  g.fillStyle = 'rgba(120,170,255,0.09)'; g.fillRect(zx, boardT, zw, mid - boardT); // Black home
+  g.fillStyle = 'rgba(244,234,210,0.08)'; g.fillRect(zx, mid, zw, boardB - mid);
+  g.fillStyle = 'rgba(120,170,255,0.08)'; g.fillRect(zx, boardT, zw, mid - boardT);
 
-  // triangles in Persian tile colours with a glossy vertical sheen + crisp gold tip
+  // 5) inlaid points: tile-colour gradient + glossy centre + a bright tip jewel
   for (let p = 1; p <= 24; p++){
     const c = colForPoint(p), x = xForCol(c), bottom = isBottom(p);
     const baseY = bottom ? boardB : boardT, tipY = bottom ? boardB - ptLen : boardT + ptLen;
     const terra = (c % 2 === 0);
     const grad = g.createLinearGradient(0, baseY, 0, tipY);
-    if (terra){ grad.addColorStop(0, '#c1543b'); grad.addColorStop(1, '#7f2f20'); }
-    else      { grad.addColorStop(0, '#2f5ea0'); grad.addColorStop(1, '#1c3a68'); }
-    g.fillStyle = grad;
-    g.beginPath();
-    g.moveTo(x - slotW*0.46, baseY); g.lineTo(x + slotW*0.46, baseY); g.lineTo(x, tipY);
-    g.closePath(); g.fill();
-    // glossy highlight down the centre
-    g.fillStyle = 'rgba(255,255,255,0.08)';
-    g.beginPath();
-    g.moveTo(x - slotW*0.12, baseY); g.lineTo(x + slotW*0.12, baseY); g.lineTo(x, tipY);
-    g.closePath(); g.fill();
-    g.strokeStyle = 'rgba(201,164,60,0.5)'; g.lineWidth = 1.5;
-    g.beginPath();
-    g.moveTo(x - slotW*0.46, baseY); g.lineTo(x + slotW*0.46, baseY); g.lineTo(x, tipY);
-    g.closePath(); g.stroke();
+    if (terra){ grad.addColorStop(0, '#cf5c41'); grad.addColorStop(0.6, '#a23c29'); grad.addColorStop(1, '#74281b'); }
+    else      { grad.addColorStop(0, '#3768b0'); grad.addColorStop(0.6, '#264f8e'); grad.addColorStop(1, '#193461'); }
+    const tri = () => { g.beginPath(); g.moveTo(x - slotW*0.46, baseY); g.lineTo(x + slotW*0.46, baseY); g.lineTo(x, tipY); g.closePath(); };
+    g.save();
+    g.shadowColor = 'rgba(0,0,0,0.35)'; g.shadowBlur = 4; g.shadowOffsetY = bottom ? -2 : 2;
+    g.fillStyle = grad; tri(); g.fill();
+    g.restore();
+    // glossy highlight down one side
+    g.fillStyle = 'rgba(255,255,255,0.10)';
+    g.beginPath(); g.moveTo(x - slotW*0.40, baseY); g.lineTo(x - slotW*0.04, baseY); g.lineTo(x, tipY); g.closePath(); g.fill();
+    // gold outline + a small jewel at the tip
+    g.strokeStyle = 'rgba(212,178,74,0.7)'; g.lineWidth = 1.5; tri(); g.stroke();
+    g.fillStyle = '#e7c45a';
+    g.beginPath(); g.arc(x, tipY + (bottom ? 6 : -6), 2.4, 0, 7); g.fill();
   }
 
-  // centre bar — rounded wooden spine with highlight
-  const barG = g.createLinearGradient(boardL+quadW, 0, boardL+quadW+BAR, 0);
-  barG.addColorStop(0, '#3a2410'); barG.addColorStop(0.5, '#80502b'); barG.addColorStop(1, '#3a2410');
-  g.fillStyle = barG; g.fillRect(boardL + quadW, boardT, BAR, boardB - boardT);
-  g.fillStyle = 'rgba(255,225,160,0.15)'; g.fillRect(boardL + quadW + BAR/2 - 2, boardT, 3, boardB - boardT);
+  // 6) centre bar — wooden spine with marquetry medallions
+  paintWood(g, boardL + quadW, boardT, BAR, boardB - boardT, ['#5a3618', '#2e1c0c', '#4a2c14']);
+  g.fillStyle = 'rgba(255,225,160,0.18)'; g.fillRect(boardL + quadW + BAR/2 - 1.5, boardT, 3, boardB - boardT);
   const barCx = boardL + quadW + BAR/2;
   drawRosette(g, barCx, boardT + 64, 15, '#e7c45a');
-  drawRosette(g, barCx, mid, 18, '#e7c45a');
+  drawRosette(g, barCx, mid, 19, '#f0d27a');
   drawRosette(g, barCx, boardB - 64, 15, '#e7c45a');
+  goldBevel(g, boardL + quadW, boardT, BAR, boardB - boardT, 1.5);
 
-  // bear-off tray — recessed with a felt-like inner gradient
-  const tray = g.createLinearGradient(trayL, 0, trayR, 0);
-  tray.addColorStop(0, '#1a1109'); tray.addColorStop(0.5, '#2c1d11'); tray.addColorStop(1, '#1a1109');
-  g.fillStyle = tray; g.fillRect(trayL, boardT, trayR - trayL, boardB - boardT);
+  // 7) bear-off tray — recessed dark wood
+  paintWood(g, trayL, boardT, trayR - trayL, boardB - boardT, ['#241710', '#160d07', '#241710']);
+  g.save(); g.shadowColor = 'rgba(0,0,0,0.6)'; g.shadowBlur = 10; g.strokeStyle = 'rgba(0,0,0,0.5)';
+  g.lineWidth = 6; g.strokeRect(trayL + 3, boardT + 3, trayR - trayL - 6, boardB - boardT - 6); g.restore();
 
-  // double gold trim with a thin dark separation for a "framed" look
-  g.strokeStyle = '#caa23a'; g.lineWidth = 3;
-  g.strokeRect(boardL, boardT, boardR - boardL, boardB - boardT);
-  g.strokeRect(trayL, boardT, trayR - trayL, boardB - boardT);
-  g.strokeStyle = 'rgba(0,0,0,0.4)'; g.lineWidth = 1;
-  g.strokeRect(boardL + 2, boardT + 2, boardR - boardL - 4, boardB - boardT - 4);
-  g.strokeStyle = 'rgba(231,196,90,0.4)'; g.lineWidth = 1;
-  g.strokeRect(boardL + 5, boardT + 5, boardR - boardL - 10, boardB - boardT - 10);
+  // 8) framed gold rims (beveled) around playfield and tray
+  goldBevel(g, boardL, boardT, boardR - boardL, boardB - boardT, 3);
+  goldBevel(g, trayL, boardT, trayR - trayL, boardB - boardT, 2.5);
+
+  // 9) ornate gold corner medallions
+  [[boardL, boardT],[boardR, boardT],[boardL, boardB],[boardR, boardB]].forEach(([cx,cy]) => {
+    drawRosette(g, cx, cy, 11, '#f0d27a');
+    g.fillStyle = '#5b3618'; g.beginPath(); g.arc(cx, cy, 3, 0, 7); g.fill();
+  });
   // (home labels are drawn per-frame in drawHomeLabels so they stay upright in both orientations)
 }
 
@@ -1486,24 +1545,43 @@ function drawCountBadge(x, y, n){
 
 function drawChecker(x, y, owner, r, locked){
   const white = owner === 'W';
-  const grad = ctx.createRadialGradient(x - r*0.3, y - r*0.3, r*0.2, x, y, r);
-  if (white){ grad.addColorStop(0, '#fffdf5'); grad.addColorStop(1, '#d9c79a'); }
-  else      { grad.addColorStop(0, '#4a4a4a'); grad.addColorStop(1, '#161616'); }
+  // drop shadow
   ctx.save();
-  ctx.shadowColor = 'rgba(0,0,0,0.4)'; ctx.shadowBlur = 5; ctx.shadowOffsetX = 1.5; ctx.shadowOffsetY = 2.5;
-  ctx.fillStyle = grad;
+  ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = 6; ctx.shadowOffsetX = 1.5; ctx.shadowOffsetY = 3;
+  ctx.fillStyle = '#000';
   ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
   ctx.restore();
-  ctx.lineWidth = 2; ctx.strokeStyle = white ? '#7a6a3a' : '#000';
-  ctx.stroke();
-  // Persian Khatam-style 8-pointed star inlay
-  const inlay = white ? '#9c6b3a' : '#d8b24a';
+  // body with a 3D radial sheen
+  const grad = ctx.createRadialGradient(x - r*0.32, y - r*0.34, r*0.15, x, y, r*1.05);
+  if (white){ grad.addColorStop(0, '#fffef8'); grad.addColorStop(0.55, '#ecdcae'); grad.addColorStop(1, '#c2a86f'); }
+  else      { grad.addColorStop(0, '#6a6a6a'); grad.addColorStop(0.5, '#363636'); grad.addColorStop(1, '#0d0d0d'); }
+  ctx.fillStyle = grad;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  // beveled rim: bright top-left, dark bottom-right
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = white ? 'rgba(255,255,255,0.7)' : 'rgba(150,150,150,0.5)';
+  ctx.beginPath(); ctx.arc(x, y, r - 1, Math.PI*1.1, Math.PI*1.9); ctx.stroke();
+  ctx.strokeStyle = white ? 'rgba(120,95,45,0.6)' : 'rgba(0,0,0,0.8)';
+  ctx.beginPath(); ctx.arc(x, y, r - 1, Math.PI*0.1, Math.PI*0.9); ctx.stroke();
+  // concave inner disc
+  const inner = ctx.createRadialGradient(x - r*0.2, y - r*0.2, r*0.1, x, y, r*0.66);
+  if (white){ inner.addColorStop(0, '#f3e6c0'); inner.addColorStop(1, '#d8c391'); }
+  else      { inner.addColorStop(0, '#2c2c2c'); inner.addColorStop(1, '#101010'); }
+  ctx.fillStyle = inner;
+  ctx.beginPath(); ctx.arc(x, y, r * 0.66, 0, 7); ctx.fill();
+  // Persian Khatam-style 8-pointed star inlay (gold)
+  const inlay = white ? '#a8772f' : '#e2bf5e';
   ctx.strokeStyle = inlay; ctx.lineWidth = 1.3;
-  starPath(ctx, x, y, 8, r * 0.62, r * 0.30, 0);          ctx.stroke();
-  starPath(ctx, x, y, 8, r * 0.50, r * 0.24, Math.PI / 8); ctx.stroke();
+  starPath(ctx, x, y, 8, r * 0.60, r * 0.28, 0);          ctx.stroke();
+  starPath(ctx, x, y, 8, r * 0.48, r * 0.22, Math.PI / 8); ctx.stroke();
   ctx.fillStyle = inlay;
-  ctx.beginPath(); ctx.arc(x, y, r * 0.09, 0, 7); ctx.fill();
-  if (locked){ drawText('🔒', x, y, `bold ${Math.round(r*0.9)}px serif`, '#d2553f'); }
+  ctx.beginPath(); ctx.arc(x, y, r * 0.10, 0, 7); ctx.fill();
+  // glossy specular highlight
+  const hl = ctx.createRadialGradient(x - r*0.35, y - r*0.4, 0, x - r*0.35, y - r*0.4, r*0.7);
+  hl.addColorStop(0, 'rgba(255,255,255,' + (white ? 0.5 : 0.28) + ')'); hl.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = hl;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  if (locked){ drawText('🔒', x, y, `bold ${Math.round(r*0.9)}px serif`, '#ff6a4d'); }
 }
 
 function drawOffTray(){
