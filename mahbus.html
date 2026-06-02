@@ -114,7 +114,7 @@
   .hint{font-size:1.1rem; opacity:.8; font-weight:normal;}
   canvas{
     background:#000; border-radius:10px; max-width:100%;
-    touch-action:manipulation; display:block; margin:0 auto;
+    touch-action:none; display:block; margin:0 auto;
     /* exact width/height are set by fitGameCanvas() */
   }
   #banner{
@@ -170,7 +170,7 @@
     html,body{ position:fixed; width:100%; height:100%; touch-action:none; }
     #gametitle, #banner, #controls, .ded-foot{ display:none !important; }
     #game{ padding:env(safe-area-inset-top,10px) env(safe-area-inset-right,10px) env(safe-area-inset-bottom,10px) env(safe-area-inset-left,10px); gap:0; justify-content:center; }
-    canvas{ touch-action:manipulation; }
+    canvas{ touch-action:none; }
     #menu .howto{ display:none; }            /* the how-to is about buttons that aren't in mobile mode */
     #menu .flourish{ margin:.1em 0; }
   }
@@ -1658,10 +1658,44 @@ function roundRect(x, y, w, h, r){
    CLICK INPUT
    ========================================================================= */
 
-cv.addEventListener('click', e => {
+// translate a pointer event into a board location { point, tray }
+function evToBoard(e){
+  const rect = cv.getBoundingClientRect();
+  const cx2 = (e.clientX - rect.left) * (cv.width / rect.width);
+  const cy2 = (e.clientY - rect.top)  * (cv.height / rect.height);
+  let x, y;
+  if (ORIENT === 'port'){ x = cy2; y = H - cx2; } else { x = cx2; y = cy2; }
+  const col = colFromX(x);
+  return { point: col >= 0 ? pointFromColRow(col, y > H / 2) : -1, tray: x >= trayL };
+}
+function canSelect(point){
+  if (point < 0) return false;
+  const pt = STATE.points[point];
+  return pt.top === STATE.current && pt.count >= 1 &&
+         pieceMovePreviews(STATE, STATE.current, point).length > 0;
+}
+// move `from` to the tapped/dropped location if it's a legal destination
+function tryMove(from, loc){
+  const previews = pieceMovePreviews(STATE, STATE.current, from);
+  let pv = null;
+  if (loc.tray) pv = previews.filter(p => p.to === 'off').sort((a,b) => a.step - b.step)[0];
+  if (!pv && loc.point >= 0) pv = previews.find(p => p.to === loc.point);
+  if (pv){ SELECTED = from; humanPlaySeq(pv.seq); return true; }
+  return false;
+}
+
+let DOWN = null;
+cv.addEventListener('pointerdown', e => {
   if (!STATE) return;
   Sound.unlock();
+  DOWN = evToBoard(e);
+});
+cv.addEventListener('pointerup', e => {
+  if (!STATE) return;
+  const down = DOWN; DOWN = null;
+  const up = evToBoard(e);
   const humanTurn = STATE.mode === 'hotseat' || STATE.current === HUMAN;
+
   // touch (button-less) mode: tap to roll, and tap to start a new game when it ends
   if (IS_TOUCH){
     if (STATE.phase === 'over'){ startGame(STATE.mode, STATE.level); return; }
@@ -1670,38 +1704,25 @@ cv.addEventListener('click', e => {
   if (STATE.phase !== 'move' || AI_BUSY || ROLLING) return;
   if (STATE.mode === 'ai' && STATE.current !== HUMAN) return;
 
-  const rect = cv.getBoundingClientRect();
-  let cx2 = (e.clientX - rect.left) * (cv.width / rect.width);
-  let cy2 = (e.clientY - rect.top)  * (cv.height / rect.height);
-  // map back into logical (landscape) board space
-  let x, y;
-  if (ORIENT === 'port'){ x = cy2; y = H - cx2; } else { x = cx2; y = cy2; }
+  const dragged = down && (down.point !== up.point || down.tray !== up.tray);
 
-  const col0 = colFromX(x);
-  const tappedPoint = col0 >= 0 ? pointFromColRow(col0, y > H / 2) : -1;
-  const previews = SELECTED !== null ? pieceMovePreviews(STATE, STATE.current, SELECTED) : [];
-
-  if (SELECTED !== null){
-    // 1) tap the already-selected piece → deselect (lets you then pick another)
-    if (tappedPoint === SELECTED){ SELECTED = null; draw(); return; }
-    // 2) tap a green destination (incl. bearing off) → move there. The green
-    //    circle always means "go here", even if it sits on your own checker.
-    if (x >= trayL){
-      const pv = previews.filter(p => p.to === 'off').sort((a,b) => a.step - b.step)[0];
-      if (pv){ humanPlaySeq(pv.seq); return; }
-    }
-    if (tappedPoint >= 0){
-      const pv = previews.find(pp => pp.to === tappedPoint);
-      if (pv){ humanPlaySeq(pv.seq); return; }
-    }
+  // DRAG: press a movable piece, release on a different highlighted spot → move
+  if (dragged && down && canSelect(down.point)){
+    if (tryMove(down.point, up)) return;
   }
 
-  // 3) otherwise (re)select a source point — only if that piece can actually move
-  if (col0 < 0){ SELECTED = null; draw(); return; }
-  const canMove = STATE.points[tappedPoint].top === STATE.current &&
-    STATE.points[tappedPoint].count >= 1 &&
-    pieceMovePreviews(STATE, STATE.current, tappedPoint).length > 0;
-  SELECTED = canMove ? tappedPoint : null;
+  // TAP on one of your own movable pieces → select / deselect (never moves it)
+  if (!dragged && up.point >= 0 && canSelect(up.point)){
+    SELECTED = (SELECTED === up.point) ? null : up.point;
+    draw();
+    return;
+  }
+
+  // TAP on a highlighted destination (empty point / enemy blot / tray) → move
+  if (SELECTED !== null && tryMove(SELECTED, up)) return;
+
+  // anything else → clear the selection
+  SELECTED = null;
   draw();
 });
 
