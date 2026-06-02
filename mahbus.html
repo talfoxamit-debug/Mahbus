@@ -1668,20 +1668,52 @@ function evToBoard(e){
   const col = colFromX(x);
   return { point: col >= 0 ? pointFromColRow(col, y > H / 2) : -1, tray: x >= trayL };
 }
-function canSelect(point){
-  if (point < 0) return false;
-  const pt = STATE.points[point];
-  return pt.top === STATE.current && pt.count >= 1 &&
-         pieceMovePreviews(STATE, STATE.current, point).length > 0;
-}
-// move `from` to the tapped/dropped location if it's a legal destination
-function tryMove(from, loc){
-  const previews = pieceMovePreviews(STATE, STATE.current, from);
-  let pv = null;
-  if (loc.tray) pv = previews.filter(p => p.to === 'off').sort((a,b) => a.step - b.step)[0];
-  if (!pv && loc.point >= 0) pv = previews.find(p => p.to === loc.point);
-  if (pv){ SELECTED = from; humanPlaySeq(pv.seq); return true; }
-  return false;
+
+/* ---------- PURE input decision (unit-tested in /tmp/mahbus_test.js) ----------
+   Given the board state, current selection, the press-down location, the
+   release location, and whether it was a drag, decide what to do.
+   Returns one of:
+     { action:'select',   point }      – pick this piece up
+     { action:'deselect' }             – clear the selection
+     { action:'move',      from, seq } – play this move sequence
+     { action:'none' }                 – ignore (no legal interpretation)
+   Rules (move-priority, with tap-selected-to-deselect as the escape hatch):
+     1. tap the already-selected piece            -> deselect
+     2. a piece is selected & target is legal      -> move there (incl. onto own piece)
+     3. drag from a movable piece to a legal spot  -> move
+     4. tap a movable own piece                    -> select it
+     5. otherwise                                  -> deselect                       */
+function decideInput(st, sel, down, up, dragged){
+  const ownMovable = pt => pt >= 0 && st.points[pt].top === st.current &&
+        st.points[pt].count >= 1 && pieceMovePreviews(st, st.current, pt).length > 0;
+  const seqTo = (from, loc) => {
+    const pvs = pieceMovePreviews(st, st.current, from);
+    let pv = null;
+    if (loc.tray) pv = pvs.filter(p => p.to === 'off').sort((a,b) => a.step - b.step)[0];
+    if (!pv && loc.point >= 0) pv = pvs.find(p => p.to === loc.point);
+    return pv ? pv.seq : null;
+  };
+
+  // 1. tapping the piece you already picked up puts it back down
+  if (!dragged && sel !== null && up.point === sel) return { action:'deselect' };
+
+  // 2. with a piece selected, a tap on any legal destination moves it there
+  if (sel !== null){
+    const seq = seqTo(sel, up);
+    if (seq) return { action:'move', from:sel, seq };
+  }
+
+  // 3. a drag from a movable piece to a legal destination moves it
+  if (dragged && down && ownMovable(down.point)){
+    const seq = seqTo(down.point, up);
+    if (seq) return { action:'move', from:down.point, seq };
+  }
+
+  // 4. tapping one of your own movable pieces selects it
+  if (up.point >= 0 && ownMovable(up.point)) return { action:'select', point:up.point };
+
+  // 5. nothing applies
+  return { action:'deselect' };
 }
 
 let DOWN = null;
@@ -1704,26 +1736,11 @@ cv.addEventListener('pointerup', e => {
   if (STATE.phase !== 'move' || AI_BUSY || ROLLING) return;
   if (STATE.mode === 'ai' && STATE.current !== HUMAN) return;
 
-  const dragged = down && (down.point !== up.point || down.tray !== up.tray);
-
-  // DRAG: press a movable piece, release on a different highlighted spot → move
-  if (dragged && down && canSelect(down.point)){
-    if (tryMove(down.point, up)) return;
-  }
-
-  // TAP on one of your own movable pieces → select / deselect (never moves it)
-  if (!dragged && up.point >= 0 && canSelect(up.point)){
-    SELECTED = (SELECTED === up.point) ? null : up.point;
-    draw();
-    return;
-  }
-
-  // TAP on a highlighted destination (empty point / enemy blot / tray) → move
-  if (SELECTED !== null && tryMove(SELECTED, up)) return;
-
-  // anything else → clear the selection
-  SELECTED = null;
-  draw();
+  const dragged = !!(down && (down.point !== up.point || down.tray !== up.tray));
+  const d = decideInput(STATE, SELECTED, down, up, dragged);
+  if (d.action === 'move'){ SELECTED = d.from; humanPlaySeq(d.seq); }
+  else if (d.action === 'select'){ SELECTED = d.point; draw(); }
+  else if (d.action === 'deselect'){ SELECTED = null; draw(); }
 });
 
 /* ---------- keyboard: Space = roll the dice ---------- */
