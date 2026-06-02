@@ -1679,15 +1679,15 @@ cv.addEventListener('click', e => {
 
   const col0 = colFromX(x);
   const tappedPoint = col0 >= 0 ? pointFromColRow(col0, y > H / 2) : -1;
-  // Is the tapped point one of my own movable pieces? If it's a stack (2+),
-  // a tap means "select this one" rather than "move onto it" — this prevents the
-  // common misclick where reselecting a stack accidentally moved the first piece.
+  // Is the tapped point one of my own pieces that can itself move? If so, a tap
+  // means "select THIS piece" rather than "move the selected piece onto it".
+  // This fixes the misclick where reselecting a piece that happened to be a legal
+  // landing spot moved the first piece there and ended the turn.
   const tappedOwnMovable = tappedPoint >= 0 &&
     STATE.points[tappedPoint].top === STATE.current &&
     STATE.points[tappedPoint].count >= 1 &&
     pieceMovePreviews(STATE, STATE.current, tappedPoint).length > 0;
-  const preferReselect = tappedOwnMovable && tappedPoint !== SELECTED &&
-    STATE.points[tappedPoint].count >= 2;
+  const preferReselect = tappedOwnMovable && tappedPoint !== SELECTED;
 
   // if a piece is picked up, a click on one of its preview stops plays the
   // whole hop sequence (1 die for a single step, more for a multi-step chain)
