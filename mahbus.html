@@ -1372,7 +1372,7 @@ function buildBoard(){
   for (let p = 1; p <= 24; p++){
     const c = colForPoint(p), x = xForCol(c), bottom = isBottom(p);
     const baseY = bottom ? boardB : boardT, tipY = bottom ? boardB - ptLen : boardT + ptLen;
-    const terra = (c % 2 === 0);
+    const terra = ((c + (bottom ? 0 : 1)) % 2 === 0);   // offset rows so colours alternate
     const grad = g.createLinearGradient(0, baseY, 0, tipY);
     if (terra){ grad.addColorStop(0, '#cf5c41'); grad.addColorStop(0.6, '#a23c29'); grad.addColorStop(1, '#74281b'); }
     else      { grad.addColorStop(0, '#3768b0'); grad.addColorStop(0.6, '#264f8e'); grad.addColorStop(1, '#193461'); }
@@ -1677,30 +1677,36 @@ cv.addEventListener('click', e => {
   let x, y;
   if (ORIENT === 'port'){ x = cy2; y = H - cx2; } else { x = cx2; y = cy2; }
 
+  const col0 = colFromX(x);
+  const tappedPoint = col0 >= 0 ? pointFromColRow(col0, y > H / 2) : -1;
+  // Is the tapped point one of my own movable pieces? If it's a stack (2+),
+  // a tap means "select this one" rather than "move onto it" — this prevents the
+  // common misclick where reselecting a stack accidentally moved the first piece.
+  const tappedOwnMovable = tappedPoint >= 0 &&
+    STATE.points[tappedPoint].top === STATE.current &&
+    STATE.points[tappedPoint].count >= 1 &&
+    pieceMovePreviews(STATE, STATE.current, tappedPoint).length > 0;
+  const preferReselect = tappedOwnMovable && tappedPoint !== SELECTED &&
+    STATE.points[tappedPoint].count >= 2;
+
   // if a piece is picked up, a click on one of its preview stops plays the
   // whole hop sequence (1 die for a single step, more for a multi-step chain)
-  if (SELECTED !== null){
+  if (SELECTED !== null && !preferReselect){
     const previews = pieceMovePreviews(STATE, STATE.current, SELECTED);
     if (x >= trayL){                                   // bear-off tray
       const pv = previews.filter(p => p.to === 'off').sort((a,b) => a.step - b.step)[0];
       if (pv){ humanPlaySeq(pv.seq); return; }
     }
-    const col = colFromX(x);
-    if (col >= 0){
-      const p = pointFromColRow(col, y > H / 2);
-      const pv = previews.find(pp => pp.to === p);
+    if (tappedPoint >= 0){
+      const pv = previews.find(pp => pp.to === tappedPoint);
       if (pv){ humanPlaySeq(pv.seq); return; }
     }
   }
 
   // otherwise (re)select a source point — but only if that piece can actually move
-  const col = colFromX(x);
-  if (col < 0){ SELECTED = null; draw(); return; }
-  const p = pointFromColRow(col, y > H / 2);
-  const pt = STATE.points[p];
-  if (pt.top === STATE.current && pt.count >= 1 &&
-      pieceMovePreviews(STATE, STATE.current, p).length > 0){
-    SELECTED = (SELECTED === p ? null : p);
+  if (col0 < 0){ SELECTED = null; draw(); return; }
+  if (tappedOwnMovable){
+    SELECTED = (SELECTED === tappedPoint ? null : tappedPoint);
   } else {
     SELECTED = null;
   }
