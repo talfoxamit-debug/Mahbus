@@ -1679,21 +1679,14 @@ cv.addEventListener('click', e => {
 
   const col0 = colFromX(x);
   const tappedPoint = col0 >= 0 ? pointFromColRow(col0, y > H / 2) : -1;
-  // Is the tapped point one of my own pieces that can itself move? If so, a tap
-  // means "select THIS piece" rather than "move the selected piece onto it".
-  // This fixes the misclick where reselecting a piece that happened to be a legal
-  // landing spot moved the first piece there and ended the turn.
-  const tappedOwnMovable = tappedPoint >= 0 &&
-    STATE.points[tappedPoint].top === STATE.current &&
-    STATE.points[tappedPoint].count >= 1 &&
-    pieceMovePreviews(STATE, STATE.current, tappedPoint).length > 0;
-  const preferReselect = tappedOwnMovable && tappedPoint !== SELECTED;
+  const previews = SELECTED !== null ? pieceMovePreviews(STATE, STATE.current, SELECTED) : [];
 
-  // if a piece is picked up, a click on one of its preview stops plays the
-  // whole hop sequence (1 die for a single step, more for a multi-step chain)
-  if (SELECTED !== null && !preferReselect){
-    const previews = pieceMovePreviews(STATE, STATE.current, SELECTED);
-    if (x >= trayL){                                   // bear-off tray
+  if (SELECTED !== null){
+    // 1) tap the already-selected piece → deselect (lets you then pick another)
+    if (tappedPoint === SELECTED){ SELECTED = null; draw(); return; }
+    // 2) tap a green destination (incl. bearing off) → move there. The green
+    //    circle always means "go here", even if it sits on your own checker.
+    if (x >= trayL){
       const pv = previews.filter(p => p.to === 'off').sort((a,b) => a.step - b.step)[0];
       if (pv){ humanPlaySeq(pv.seq); return; }
     }
@@ -1703,13 +1696,12 @@ cv.addEventListener('click', e => {
     }
   }
 
-  // otherwise (re)select a source point — but only if that piece can actually move
+  // 3) otherwise (re)select a source point — only if that piece can actually move
   if (col0 < 0){ SELECTED = null; draw(); return; }
-  if (tappedOwnMovable){
-    SELECTED = (SELECTED === tappedPoint ? null : tappedPoint);
-  } else {
-    SELECTED = null;
-  }
+  const canMove = STATE.points[tappedPoint].top === STATE.current &&
+    STATE.points[tappedPoint].count >= 1 &&
+    pieceMovePreviews(STATE, STATE.current, tappedPoint).length > 0;
+  SELECTED = canMove ? tappedPoint : null;
   draw();
 });
 
