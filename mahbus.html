@@ -302,6 +302,7 @@ let HISTORY = [];            // undo snapshots for the current turn
 let AI_BUSY = false;
 let ORIENT = 'land';         // 'land' (wide) or 'port' (board rotated 90° for tall phones)
 let GEN = 0;                 // bumped on new game / menu — invalidates stale async callbacks
+let AI_DEADLINE = 0;         // wall-clock cutoff so AI search can never hang the UI
 const IS_TOUCH = !!(('ontouchstart' in window) || (navigator.maxTouchPoints > 0) ||
                     (window.matchMedia && window.matchMedia('(pointer:coarse)').matches)); // phone/tablet
 
@@ -955,7 +956,7 @@ function bestPlay(start, p, nodeCap){
   const seen = new Set();
   let nodes = 0;
   (function rec(st, seq){
-    if (++nodes > (nodeCap || 60000)) return;
+    if (++nodes > (nodeCap || 60000) || Date.now() > AI_DEADLINE) return;  // bounded + time-guarded
     const moves = legalMoves(st, p);
     if (moves.length === 0){
       const sc = scoreFor(st, p) + seq.length * 0.6; // prefer using more dice
@@ -995,7 +996,7 @@ function randomSequence(start){
 function aiCandidates(start, nodeCap){
   const out = []; const seen = new Set(); let nodes = 0;
   (function rec(st, seq){
-    if (++nodes > (nodeCap || 60000)) return;
+    if (++nodes > (nodeCap || 60000) || Date.now() > AI_DEADLINE) return;
     const moves = legalMoves(st, AI);
     if (moves.length === 0){ out.push({ seq:seq.slice(), end:st, score:scoreFor(st, AI) + seq.length * 0.6 }); return; }
     for (const m of moves){
@@ -1015,19 +1016,20 @@ function aiCandidates(start, nodeCap){
 // then pick the line that leaves White worst off. Worst-case ("min") risk is also
 // folded in so the AI avoids lines that get punished badly by an unlucky roll.
 function hardSequence(start){
-  const cands = aiCandidates(start, 120000);
+  const cands = aiCandidates(start, 80000);
   if (cands.length === 0) return [];
   cands.sort((a,b) => b.score - a.score);
-  const top = cands.slice(0, 12);             // weigh more candidate turns
-  let best = null, bestVal = -Infinity;
+  const top = cands.slice(0, 8);              // strongest candidate turns
+  let best = top[0], bestVal = -Infinity;     // default to greedy-best so we never return null
   for (const c of top){
     if (c.end.phase === 'over'){ return c.seq; } // a winning line — take it
+    if (Date.now() > AI_DEADLINE) break;        // out of time — keep best so far
     let total = 0, wsum = 0, worst = Infinity;
     for (let d1 = 1; d1 <= 6; d1++){
       for (let d2 = d1; d2 <= 6; d2++){
         const w = (d1 === d2) ? 1 : 2;          // probability weight of this roll
         const ws = clone(c.end); ws.current = 'W'; ws.dicePool = makePool(d1, d2);
-        const wScore = bestPlay(ws, 'W', 12000).score;   // White's best reply
+        const wScore = bestPlay(ws, 'W', 8000).score;    // White's best reply
         total += w * wScore; wsum += w;
         if (wScore < worst) worst = wScore;     // White's nastiest reply to us
       }
@@ -1048,11 +1050,14 @@ function aiTurn(){
   animateRoll(AI, () => {
     if (g !== GEN) return;
     let seq;
+    AI_DEADLINE = Date.now() + 900;            // never let the AI freeze the UI
     if      (STATE.level === 'easy') seq = randomSequence(STATE);
     else if (STATE.level === 'hard') seq = hardSequence(STATE);
     else                             seq = bestPlay(STATE, AI, 60000).seq;
+    // safety net: if search was cut short but moves exist, just take a quick legal line
+    if ((!seq || seq.length === 0) && legalMoves(STATE, AI).length > 0) seq = randomSequence(STATE);
 
-    if (seq.length === 0){
+    if (!seq || seq.length === 0){              // genuinely no legal move — pass
       toast('אין למחשב מהלך.');
       setTimeout(() => { if (g !== GEN) return; AI_BUSY = false; endTurn(); }, 1400);
       return;
