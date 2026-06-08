@@ -63,7 +63,13 @@
     opacity:0; pointer-events:none; transition:opacity .4s, transform .4s;
   }
   #wincard.show{opacity:1; transform:translate(-50%,-50%) scale(1); pointer-events:auto;}
-  #wincard #wintext{font-size:2.8rem; font-weight:bold; margin-bottom:12px;}
+  #wincard #wintext{font-size:2.8rem; font-weight:bold; margin-bottom:8px;}
+  #wincard #winscore{font-size:1.5rem; color:#f4ead2; margin-bottom:12px;
+    padding:6px 0; border-top:1px solid rgba(201,164,60,.4); border-bottom:1px solid rgba(201,164,60,.4);}
+  #scoreboard{color:#e9c46a; font-size:clamp(1rem,3vw,1.5rem); font-weight:bold;
+    margin:2px 0 4px; letter-spacing:.05em;}
+  #scoreboard .sc-reset{font-size:.8em; color:#cdbf9f; cursor:pointer; opacity:.7;
+    text-decoration:underline; margin-inline-start:.6em;}
   #wincard .ded-he{font-size:1.6rem; line-height:1.7;}
   #wincard .ded-fa{font-size:1.45rem; opacity:.95; line-height:1.7;}
   #wincard .tap{font-size:1.1rem; opacity:.6; margin-top:14px;}
@@ -168,7 +174,7 @@
      Desktop/laptop (pointer:fine) is completely unaffected. */
   @media (pointer:coarse){
     html,body{ position:fixed; width:100%; height:100%; touch-action:none; }
-    #gametitle, #banner, #controls, .ded-foot{ display:none !important; }
+    #gametitle, #banner, #controls, .ded-foot, #scoreboard{ display:none !important; }
     #game{ padding:env(safe-area-inset-top,10px) env(safe-area-inset-right,10px) env(safe-area-inset-bottom,10px) env(safe-area-inset-left,10px); gap:0; justify-content:center; }
     canvas{ touch-action:none; }
     #menu .howto{ display:none; }            /* the how-to is about buttons that aren't in mobile mode */
@@ -228,6 +234,7 @@
 <!-- win celebration card (tap to dismiss) -->
 <div id="wincard" onclick="this.classList.remove('show')">
   <div id="wintext"></div>
+  <div id="winscore"></div>
   <div class="ded-he">מוקדש באהבה לסבא בוריס היקר — מטל ♥</div>
   <div class="ded-fa">تقدیم با عشق به بابابزرگ عزیزم بوریس — تال</div>
   <div class="tap">(הקש כדי לסגור)</div>
@@ -262,6 +269,7 @@
 <!-- ===================== GAME ===================== -->
 <div id="game">
   <div id="gametitle">מַחְבּוּס · המשחק של סבא בוריס <span class="fa">· بابابزرگ بوریس</span></div>
+  <div id="scoreboard"></div>
   <div id="banner">&nbsp;</div>
   <canvas id="board" width="960" height="620"></canvas>
   <div id="controls">
@@ -303,6 +311,36 @@ let AI_BUSY = false;
 let ORIENT = 'land';         // 'land' (wide) or 'port' (board rotated 90° for tall phones)
 let GEN = 0;                 // bumped on new game / menu — invalidates stale async callbacks
 let AI_DEADLINE = 0;         // wall-clock cutoff so AI search can never hang the UI
+
+/* ---------- persistent match score (survives refresh / TV sleep) ---------- */
+let SCORE = { you:0, computer:0, white:0, black:0 };
+function loadScore(){
+  try{ const s = JSON.parse(localStorage.getItem('mahbus_score')); if (s) SCORE = Object.assign(SCORE, s); }catch(e){}
+}
+function saveScore(){
+  try{ localStorage.setItem('mahbus_score', JSON.stringify(SCORE)); }catch(e){}
+}
+function resetScore(){ SCORE = { you:0, computer:0, white:0, black:0 }; saveScore(); renderScoreboard(); }
+function recordWin(){
+  if (!STATE) return;
+  if (STATE.mode === 'ai'){
+    if (STATE.winner === HUMAN) SCORE.you++; else SCORE.computer++;
+  } else {
+    if (STATE.winner === 'W') SCORE.white++; else SCORE.black++;
+  }
+  saveScore(); renderScoreboard();
+}
+function renderScoreboard(){
+  const el = document.getElementById('scoreboard');
+  if (!el || !STATE) return;
+  if (STATE.mode === 'ai'){
+    el.innerHTML = `🏆 אתה ${SCORE.you} : ${SCORE.computer} מחשב` +
+      ((SCORE.you || SCORE.computer) ? ` <span class="sc-reset" onclick="resetScore()">איפוס</span>` : '');
+  } else {
+    el.innerHTML = `🏆 לבן ${SCORE.white} : ${SCORE.black} שחור` +
+      ((SCORE.white || SCORE.black) ? ` <span class="sc-reset" onclick="resetScore()">איפוס</span>` : '');
+  }
+}
 const IS_TOUCH = !!(('ontouchstart' in window) || (navigator.maxTouchPoints > 0) ||
                     (window.matchMedia && window.matchMedia('(pointer:coarse)').matches)); // phone/tablet
 
@@ -527,6 +565,7 @@ function startGame(mode, level){
   }
   document.getElementById('menu').style.display = 'none';
   document.getElementById('game').style.display = 'flex';
+  renderScoreboard();
   draw();
   updateUI();
   requestAnimationFrame(fitGameCanvas);
@@ -589,7 +628,7 @@ function fitMenu(){
 function fitScreens(){ fitGameCanvas(); fitMenu(); }
 window.addEventListener('resize', fitScreens);
 window.addEventListener('orientationchange', () => { [120, 350, 700].forEach(d => setTimeout(fitScreens, d)); });
-window.addEventListener('load', () => { fitScreens(); setTimeout(fitScreens, 300); });
+window.addEventListener('load', () => { loadScore(); fitScreens(); setTimeout(fitScreens, 300); });
 if (window.visualViewport){               // most reliable on phones / in-app browsers
   window.visualViewport.addEventListener('resize', fitScreens);
   window.visualViewport.addEventListener('scroll', fitScreens);
@@ -862,11 +901,16 @@ let winTimer = null;
 function announceWin(){
   Sound.win();
   startConfetti();
+  recordWin();
   draw(); updateUI();
   const who = STATE.winner === HUMAN && STATE.mode === 'ai' ? '🎉 ניצחת!'
             : (STATE.winner === 'W' ? '🎉 הלבן ניצח!' : '🎉 השחור ניצח!');
   const wc = document.getElementById('wincard');
   document.getElementById('wintext').textContent = who;
+  const score = STATE.mode === 'ai'
+    ? `אתה ${SCORE.you} : ${SCORE.computer} מחשב`
+    : `לבן ${SCORE.white} : ${SCORE.black} שחור`;
+  document.getElementById('winscore').textContent = '🏆 ' + score;
   wc.classList.add('show');
   clearTimeout(winTimer);
   winTimer = setTimeout(() => wc.classList.remove('show'), 7000);
