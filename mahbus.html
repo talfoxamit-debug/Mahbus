@@ -947,23 +947,23 @@ let AI_PROFILE = AI_PROFILES[4];   // default; replaced per game for Hard
 function scoreFor(st, p){
   const o = opp(p);
   const w = (p === AI) ? AI_PROFILE : AI_PROFILES[4];   // opponent modelled as balanced
-  let trapByMe = 0, trapAgainst = 0, blotRisk = 0, made = 0, prime = 0, homeMine = 0, backMine = 0;
-  let lastMade = -9;
+  let trapByMe = 0, trapAgainst = 0, trapDepth = 0, blotRisk = 0;
+  let made = 0, primeBonus = 0, run = 0, homePts = 0, homeMine = 0, backMine = 0, builders = 0;
   for (let i = 1; i <= 24; i++){
     const pt = st.points[i];
-    if (pt.trapped === o) trapByMe++;        // I'm sitting on an enemy prisoner (great)
-    if (pt.trapped === p) trapAgainst++;     // one of mine is imprisoned (bad)
+    if (pt.trapped === o){ trapByMe++; trapDepth += (o === 'W' ? i : 25 - i); }   // deeper prisoner = harder to free
+    if (pt.trapped === p) trapAgainst++;
+    if (pt.top === p && pt.count >= 2){            // a "made" point — blocks the opponent
+      made++; run++;                               // track consecutive points (a prime wall)
+      if (inHome(p, i)) homePts++;                 // points in MY home board are the trap zone
+      if (pt.count >= 3) builders += pt.count - 2; // spare checkers ready to make new points
+    } else {
+      primeBonus += run * run; run = 0;            // longer walls are worth far more
+    }
     if (pt.top === p){
-      if (pt.count >= 2){                    // a "made" point — blocks the opponent
-        made++;
-        if (i === lastMade + 1) prime++;     // consecutive made points = a wall
-        lastMade = i;
-      }
-      if (inHome(p, i)) homeMine += pt.count; // checkers ready to bear off
-      // deep "back" checkers (still in the opponent's home) — fewer is better
+      if (inHome(p, i)) homeMine += pt.count;
       if ((p === 'W' && i >= 19) || (p === 'B' && i <= 6)) backMine += pt.count;
-      // a lone checker's exposure, weighted by the odds the opponent hits it
-      if (pt.count === 1 && pt.trapped === null){
+      if (pt.count === 1 && pt.trapped === null){  // blot exposure, weighted by real hit odds
         let dist = 0;
         if (o === 'W'){ for (let k = i+1; k <= Math.min(24, i+6); k++) if (st.points[k].top === 'W'){ dist = k - i; break; } }
         else          { for (let k = i-1; k >= Math.max(1, i-6); k--) if (st.points[k].top === 'B'){ dist = i - k; break; } }
@@ -971,10 +971,14 @@ function scoreFor(st, p){
       }
     }
   }
+  primeBonus += run * run;
   return (pipCount(st, o) - pipCount(st, p)) * w.race
        + (trapByMe - trapAgainst) * w.trap
+       + trapDepth * 0.7                       // hold prisoners deep where they can't escape
        + (st.off[p] - st.off[o]) * w.off
-       + made * w.made + prime * w.prime
+       + made * w.made + primeBonus * w.prime
+       + homePts * 3.0                         // making home-board points is strong
+       + builders * 1.2                        // spares that can build the next point
        + homeMine * w.home
        - backMine * w.back
        - blotRisk * w.blot;
@@ -1060,10 +1064,10 @@ function aiCandidates(start, nodeCap){
 // then pick the line that leaves White worst off. Worst-case ("min") risk is also
 // folded in so the AI avoids lines that get punished badly by an unlucky roll.
 function hardSequence(start){
-  const cands = aiCandidates(start, 80000);
+  const cands = aiCandidates(start, 200000);
   if (cands.length === 0) return [];
   cands.sort((a,b) => b.score - a.score);
-  const top = cands.slice(0, 8);              // strongest candidate turns
+  const top = cands.slice(0, 16);             // examine more candidate turns
   let best = top[0], bestVal = -Infinity;     // default to greedy-best so we never return null
   for (const c of top){
     if (c.end.phase === 'over'){ return c.seq; } // a winning line — take it
@@ -1073,7 +1077,7 @@ function hardSequence(start){
       for (let d2 = d1; d2 <= 6; d2++){
         const w = (d1 === d2) ? 1 : 2;          // probability weight of this roll
         const ws = clone(c.end); ws.current = 'W'; ws.dicePool = makePool(d1, d2);
-        const wScore = bestPlay(ws, 'W', 8000).score;    // White's best reply
+        const wScore = bestPlay(ws, 'W', 20000).score;   // White's best reply (deeper)
         total += w * wScore; wsum += w;
         if (wScore < worst) worst = wScore;     // White's nastiest reply to us
       }
@@ -1094,7 +1098,8 @@ function aiTurn(){
   animateRoll(AI, () => {
     if (g !== GEN) return;
     let seq;
-    AI_DEADLINE = Date.now() + 900;            // never let the AI freeze the UI
+    // Hard thinks longer (the deliberate move pacing hides it); others stay snappy
+    AI_DEADLINE = Date.now() + (STATE.level === 'hard' ? 2500 : 700);
     if      (STATE.level === 'easy') seq = randomSequence(STATE);
     else if (STATE.level === 'hard') seq = hardSequence(STATE);
     else                             seq = bestPlay(STATE, AI, 60000).seq;
