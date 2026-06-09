@@ -197,6 +197,22 @@
     }
     #mobctl button:active{ background:rgba(201,164,60,.3); }
   }
+  /* "please rotate" overlay: only on touch devices in portrait. Pure CSS so it is
+     reliable even when JS orientation detection is flaky (in-app browsers). */
+  #rotate{ display:none; }
+  @media (pointer:coarse) and (orientation:portrait){
+    #rotate{
+      display:flex; position:fixed; inset:0; z-index:200;
+      flex-direction:column; align-items:center; justify-content:center; gap:18px;
+      background:#16202a; color:#e9c46a; text-align:center; padding:24px;
+    }
+    /* keep the floating controls out of the way while rotating */
+    #mobctl{ display:none !important; }
+  }
+  #rotate .rot-phone{ font-size:5rem; animation:rotnudge 1.8s ease-in-out infinite; }
+  @keyframes rotnudge{ 0%,40%{ transform:rotate(0); } 60%,100%{ transform:rotate(-90deg); } }
+  #rotate .rot-he{ font-size:1.9rem; font-weight:bold; }
+  #rotate .rot-fa{ font-size:1.4rem; opacity:.85; }
   #toast{
     position:fixed; left:50%; top:14px; transform:translateX(-50%);
     background:#000a; color:#fff; padding:10px 18px; border-radius:10px;
@@ -221,6 +237,13 @@
   <div class="opp-name" id="oppName">—</div>
   <div class="opp-fa" id="oppFa">—</div>
   <div class="opp-desc" id="oppDesc">—</div>
+</div>
+
+<!-- "please rotate" overlay — shown on touch devices held in portrait -->
+<div id="rotate">
+  <div class="rot-phone">📱</div>
+  <div class="rot-he">סובבו את המכשיר לרוחב</div>
+  <div class="rot-fa">دستگاه را به حالت افقی بچرخانید</div>
 </div>
 
 <!-- tiny floating controls (mobile only): undo / sound / home -->
@@ -599,19 +622,17 @@ function fitGameCanvas(){
   }
   const availH = vh - used;
   const availW = Math.min(game.clientWidth, vw) - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight);
-  // portrait if ANY signal says so (in-app browsers misreport some) — touch only; desktop stays wide
-  const isPortrait = (window.innerHeight > window.innerWidth)
-                  || (vh > vw)
-                  || (window.matchMedia && window.matchMedia('(orientation:portrait)').matches);
-  ORIENT = (IS_TOUCH && isPortrait) ? 'port' : 'land';
-  const ratio = (ORIENT === 'port') ? (H / W) : (W / H);   // board width / height
+  // The board is ALWAYS landscape (wide). On a touch device held in portrait, a CSS
+  // overlay (#rotate) asks the user to turn the phone — so we never squeeze the board.
+  ORIENT = 'land';
+  const ratio = W / H;                             // board width / height (always landscape)
   const m = IS_TOUCH ? 8 : 0;                      // extra safety so nothing clips at the edge
   let w = Math.min(availW - 2*m, (availH - 2*m) * ratio);
   if (!(w > 0)) w = availW;
   w = Math.max(160, w);
   cv.style.width = w + 'px';
   cv.style.height = (w / ratio) + 'px';
-  if (STATE) draw();                              // re-render in the chosen orientation
+  if (STATE) draw();
 }
 function fitMenu(){
   const menu = document.getElementById('menu');
