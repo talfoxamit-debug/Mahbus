@@ -87,6 +87,11 @@
     display:none; flex-direction:column; align-items:center; justify-content:center;
     height:100vh; height:100dvh; overflow:hidden; padding:4px 6px 6px; gap:1px; margin:0 auto;
   }
+  /* the board fills all the space left over after the chrome (flexbox measures it) */
+  #boardwrap{
+    flex:1 1 auto; min-height:0; width:100%;
+    display:flex; align-items:center; justify-content:center; overflow:hidden;
+  }
   /* menu fills the viewport and is scaled to fit (never scrolls) */
   #menu{
     display:flex; align-items:center; justify-content:center;
@@ -123,8 +128,8 @@
   .bigbtn.lvl{min-width:200px; font-size:1.7rem; padding:22px 24px;}
   .hint{font-size:1.1rem; opacity:.8; font-weight:normal;}
   canvas{
-    background:#000; border-radius:10px; max-width:100%;
-    touch-action:none; display:block; margin:0 auto;
+    background:#000; border-radius:10px; max-width:100%; max-height:100%;
+    touch-action:none; display:block;
     /* exact width/height are set by fitGameCanvas() */
   }
   #banner{
@@ -293,7 +298,7 @@
   <div id="gametitle">מַחְבּוּס · המשחק של סבא בוריס <span class="fa">· بابابزرگ بوریس</span></div>
   <div id="scoreboard"></div>
   <div id="banner">&nbsp;</div>
-  <canvas id="board" width="960" height="620"></canvas>
+  <div id="boardwrap"><canvas id="board" width="960" height="620"></canvas></div>
   <div id="controls">
     <button id="btnRoll" onclick="onRoll()" style="display:none">🎲 הטל את הקוביות</button>
     <button id="btnUndo"  class="ctrl" onclick="onUndo()">↩ בטל מהלך</button>
@@ -615,31 +620,24 @@ function toMenu(){
 function fitGameCanvas(){
   const game = document.getElementById('game');
   if (!game || getComputedStyle(game).display === 'none') return;
-  const s = getComputedStyle(game);
   const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
-  const vw = (window.visualViewport && window.visualViewport.width)  || window.innerWidth;
   if (IS_TOUCH) game.style.height = vh + 'px';     // match the VISIBLE area so nothing scrolls
-  // space taken by chrome (none on touch — board only)
-  let used = parseFloat(s.paddingTop) + parseFloat(s.paddingBottom);
-  if (!IS_TOUCH){
-    const gap = parseFloat(s.rowGap || s.gap) || 0;
-    ['gametitle', 'scoreboard', 'banner', 'controls'].forEach(id => {
-      const e = document.getElementById(id);
-      if (e && e.offsetHeight){ used += e.offsetHeight + gap; }
-    });
-    const foot = game.querySelector('.ded-foot');
-    if (foot && getComputedStyle(foot).display !== 'none' && foot.offsetHeight){ used += foot.offsetHeight + gap; }
-  }
-  const availH = vh - used;
-  const availW = Math.min(game.clientWidth, vw) - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight);
   // The board is ALWAYS landscape (wide). On a touch device held in portrait, a CSS
-  // overlay (#rotate) asks the user to turn the phone — so we never squeeze the board.
+  // overlay (#rotate) asks the user to turn the phone.
   ORIENT = 'land';
   const ratio = W / H;                             // board width / height (always landscape)
-  const m = IS_TOUCH ? 8 : 0;                      // extra safety so nothing clips at the edge
-  let w = Math.min(availW - 2*m, (availH - 2*m) * ratio);
-  if (!(w > 0)) w = availW;
-  w = Math.max(160, w);
+
+  // Let flexbox tell us exactly how much room is left for the board (robust on any
+  // screen — no manual summing of chrome heights). Size the canvas to fit that box.
+  const wrap = document.getElementById('boardwrap');
+  let availW = wrap ? wrap.clientWidth  : window.innerWidth;
+  let availH = wrap ? wrap.clientHeight : vh;
+  const m = 6;                                     // small inset so nothing touches the edge
+  availW -= 2*m; availH -= 2*m;
+  if (!(availW > 0)) availW = 200;
+  if (!(availH > 0)) availH = 200;
+  let w = Math.min(availW, availH * ratio);
+  w = Math.max(120, w);
   cv.style.width = w + 'px';
   cv.style.height = (w / ratio) + 'px';
   if (STATE) draw();
@@ -664,6 +662,19 @@ if (window.visualViewport){               // most reliable on phones / in-app br
   window.visualViewport.addEventListener('resize', fitScreens);
   window.visualViewport.addEventListener('scroll', fitScreens);
 }
+// Re-fit whenever the board's available box actually changes size — covers font
+// loading, browser zoom, sidebars, DPI changes etc. on ANY screen.
+if (window.ResizeObserver){
+  let rafPending = false;
+  const ro = new ResizeObserver(() => {
+    if (rafPending) return; rafPending = true;
+    requestAnimationFrame(() => { rafPending = false; fitGameCanvas(); });
+  });
+  const wrap = document.getElementById('boardwrap'); if (wrap) ro.observe(wrap);
+  const menu = document.getElementById('menu');      if (menu) ro.observe(menu);
+}
+// fonts can change chrome height after first paint — re-fit once they're ready
+if (document.fonts && document.fonts.ready){ document.fonts.ready.then(() => fitScreens()); }
 
 /* =========================================================================
    RULES
