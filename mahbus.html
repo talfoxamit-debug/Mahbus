@@ -111,6 +111,13 @@
   .bigbtn:active{transform:translateY(2px); box-shadow:0 3px 0 #127a37;}
   .bigbtn.alt{background:#1565d8; color:#fff; box-shadow:0 6px 0 #0d418c;}
   .bigbtn.alt:active{box-shadow:0 3px 0 #0d418c;}
+  /* discreet two-player link, bottom corner of the start screen only */
+  #twoPlayerLink{
+    position:fixed; bottom:10px; left:12px; z-index:30;
+    font-family:inherit; font-size:.95rem; color:#9a8f7a; opacity:.55;
+    background:none; border:none; cursor:pointer; padding:6px 8px;
+  }
+  #twoPlayerLink:hover{ opacity:1; text-decoration:underline; }
   .level-label{font-size:1.7rem; margin-top:14px; color:#e9c46a; font-weight:bold;}
   .level-row{display:flex; gap:14px; justify-content:center; flex-wrap:wrap;}
   .bigbtn.lvl{min-width:200px; font-size:1.7rem; padding:22px 24px;}
@@ -121,8 +128,13 @@
     /* exact width/height are set by fitGameCanvas() */
   }
   #banner{
-    font-size:clamp(1.1rem,2.6vmin,1.7rem); font-weight:bold; color:#1a1a1a;
-    padding:2px 10px; min-height:1.1em; line-height:1.1;
+    font-size:clamp(1.5rem,3.6vmin,2.4rem); font-weight:bold; color:#1a1a1a;
+    padding:3px 10px; min-height:1.1em; line-height:1.1;
+  }
+  .turn-dot{
+    display:inline-block; width:1em; height:1em; border-radius:50%;
+    border:2px solid #1565d8; vertical-align:-0.12em; margin-inline-start:.3em;
+    box-shadow:0 1px 3px rgba(0,0,0,.3);
   }
   #controls{
     display:flex; flex-wrap:wrap; gap:clamp(6px,1.2vmin,12px); justify-content:center;
@@ -272,8 +284,9 @@
     <div class="ded-fa">تقدیم با عشق به بابابزرگ عزیزم بوریس — تال</div>
   </div>
   <button class="bigbtn" onclick="startGame('ai','hard')">🎲 משחק חדש</button>
-  <button class="bigbtn alt" onclick="startGame('hotseat')">👥 שני שחקנים</button>
 </div></div>
+<!-- discreet: two-player mode, tucked in the corner so the main screen stays simple -->
+<button id="twoPlayerLink" onclick="startGame('hotseat')">שני שחקנים</button>
 
 <!-- ===================== GAME ===================== -->
 <div id="game">
@@ -282,7 +295,7 @@
   <div id="banner">&nbsp;</div>
   <canvas id="board" width="960" height="620"></canvas>
   <div id="controls">
-    <button id="btnRoll" onclick="onRoll()">🎲 הטל את הקוביות <span class="hint">(רווח)</span></button>
+    <button id="btnRoll" onclick="onRoll()" style="display:none">🎲 הטל את הקוביות</button>
     <button id="btnUndo"  class="ctrl" onclick="onUndo()">↩ בטל מהלך</button>
     <button id="btnNew"   class="ctrl" onclick="startGame(STATE.mode, STATE.level)">משחק חדש</button>
     <button id="btnMenu"  class="ctrl" onclick="toMenu()">תפריט</button>
@@ -577,10 +590,13 @@ function startGame(mode, level){
   }
   document.getElementById('menu').style.display = 'none';
   document.getElementById('game').style.display = 'flex';
+  document.getElementById('twoPlayerLink').style.display = 'none';
   renderScoreboard();
   draw();
   updateUI();
   requestAnimationFrame(fitGameCanvas);
+  // first turn is the human's — auto-roll (after the opponent intro card, if any)
+  setTimeout(autoRollIfHuman, STATE.aiProfile ? 2200 : 700);
 }
 let oppTimer = null;
 
@@ -591,6 +607,7 @@ function toMenu(){
   document.getElementById('oppcard').classList.remove('show');
   document.getElementById('game').style.display = 'none';
   document.getElementById('menu').style.display = 'flex';
+  document.getElementById('twoPlayerLink').style.display = 'block';
   requestAnimationFrame(fitMenu);
 }
 
@@ -764,6 +781,16 @@ function pipCount(st, p){
    TURN FLOW
    ========================================================================= */
 
+// Auto-roll: when it becomes a human's turn, roll the dice automatically after a
+// short pause — one less button for grandpa to press. (The computer rolls itself.)
+function autoRollIfHuman(){
+  if (!STATE || STATE.phase !== 'await' || AI_BUSY || ROLLING) return;
+  const isHumanTurn = STATE.mode === 'hotseat' || STATE.current === HUMAN;
+  if (!isHumanTurn) return;
+  const g = GEN;
+  setTimeout(() => { if (g === GEN && STATE && STATE.phase === 'await' && !AI_BUSY && !ROLLING) onRoll(); }, 550);
+}
+
 function onRoll(){
   if (!STATE || STATE.phase !== 'await' || AI_BUSY) return;
   const g = GEN;
@@ -928,6 +955,8 @@ function endTurn(){
   if (STATE.mode === 'ai' && STATE.current === AI){
     const g = GEN;
     setTimeout(() => { if (g === GEN) aiTurn(); }, 650);
+  } else {
+    autoRollIfHuman();           // human's turn — roll automatically
   }
 }
 
@@ -1316,7 +1345,7 @@ function draw(){
     const human = STATE.mode === 'hotseat' || STATE.current === HUMAN;
     if (STATE.phase === 'await' && human && !AI_BUSY && !ROLLING){
       const who = STATE.current === 'W' ? 'הלבן' : 'השחור';
-      drawText('🎲  ' + who + ' — הקש לזריקה', mx, my, 'bold 30px Georgia', '#b3001b');
+      drawText('🎲  תור ' + who, mx, my, 'bold 30px Georgia', '#b3001b');
     } else if (STATE.phase === 'over'){
       drawText('הקש למשחק חדש', mx, my + 46, 'bold 26px Georgia', '#b3001b');
     } else if (STATE.mode === 'ai' && STATE.current === AI && !ROLLING){
@@ -1876,22 +1905,27 @@ function updateUI(){
   if (!STATE) return;
   const banner = document.getElementById('banner');
   const name = STATE.current === 'W' ? 'הלבן' : 'השחור';
+  // a big coloured dot showing whose turn it is (white/black checker)
+  const dotColor = STATE.current === 'W' ? '#ffffff' : '#1a1a1a';
+  const dot = `<span class="turn-dot" style="background:${dotColor}"></span>`;
+  let txt;
   if (STATE.phase === 'over'){
     const w = STATE.winner === 'W' ? 'הלבן' : 'השחור';
-    banner.textContent = (STATE.mode === 'ai' && STATE.winner === HUMAN) ? '🎉 ניצחת!' : `🎉 ${w} ניצח!`;
+    txt = (STATE.mode === 'ai' && STATE.winner === HUMAN) ? '🎉 ניצחת!' : `🎉 ${w} ניצח!`;
+    banner.innerHTML = txt;
   } else if (STATE.mode === 'ai' && STATE.current === AI){
-    banner.textContent = STATE.aiProfile
+    banner.innerHTML = STATE.aiProfile
       ? `${STATE.aiProfile.emoji} ${STATE.aiProfile.name} חושב…`
       : '🤖 המחשב חושב…';
   } else if (STATE.phase === 'await'){
-    banner.textContent = `תור ${name} — הטל את הקוביות`;
+    banner.innerHTML = `${dot} תור ${name}`;
   } else {
-    banner.textContent = `תור ${name} — בצע מהלך`;
+    banner.innerHTML = `${dot} תור ${name} — בצע מהלך`;
   }
-  banner.style.color = STATE.current === 'W' ? '#f4ead2' : '#cdcdcd';
+  banner.style.color = '#1a1a1a';
 
   const isHumanTurn = STATE.mode === 'hotseat' || STATE.current === HUMAN;
-  document.getElementById('btnRoll').disabled = !(STATE.phase === 'await' && isHumanTurn && !AI_BUSY);
+  const rb = document.getElementById('btnRoll'); if (rb) rb.disabled = !(STATE.phase === 'await' && isHumanTurn && !AI_BUSY);
   document.getElementById('btnUndo').disabled = !(HISTORY.length > 0 && isHumanTurn && !AI_BUSY);
 }
 
