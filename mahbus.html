@@ -26,12 +26,12 @@
   .flourish{color:#1aa64b; font-size:1.7rem; letter-spacing:.5em; margin:.1em 0 .3em;}
   /* gold plaque shown above the board on the playing screen */
   #gametitle{
-    margin:1px auto 2px; padding:clamp(2px,0.6vmin,6px) clamp(10px,2vmin,20px);
-    display:inline-block; border-radius:10px; line-height:1.15;
-    color:#b3001b; font-size:clamp(.9rem,2.2vmin,1.4rem); font-weight:bold;
+    margin:0 auto; padding:1px clamp(8px,1.6vmin,16px);
+    display:inline-block; border-radius:8px; line-height:1.1;
+    color:#b3001b; font-size:clamp(.8rem,1.7vmin,1.15rem); font-weight:bold;
     border:2px solid #1565d8; background:#ffffff;
   }
-  #gametitle .fa{font-size:clamp(.7rem,1.6vmin,1.05rem); opacity:.9; font-weight:normal; color:#1565d8;}
+  #gametitle .fa{font-size:clamp(.65rem,1.3vmin,.9rem); opacity:.9; font-weight:normal; color:#1565d8;}
   /* opponent intro card (Hard mode) */
   #oppcard{
     position:fixed; left:50%; top:50%; transform:translate(-50%,-50%) scale(.8);
@@ -63,8 +63,8 @@
   #wincard #wintype:empty{display:none;}
   #wincard #winscore{font-size:1.5rem; color:#1565d8; font-weight:bold; margin-bottom:12px;
     padding:6px 0; border-top:2px solid #1aa64b; border-bottom:2px solid #1aa64b;}
-  #scoreboard{color:#b3001b; font-size:clamp(.9rem,1.9vmin,1.25rem); font-weight:bold;
-    margin:1px 0 2px; letter-spacing:.05em;}
+  #scoreboard{color:#b3001b; font-size:clamp(.85rem,1.6vmin,1.1rem); font-weight:bold;
+    margin:0; letter-spacing:.05em; line-height:1.1;}
   #scoreboard .sc-reset{font-size:.8em; color:#1565d8; cursor:pointer;
     text-decoration:underline; margin-inline-start:.6em;}
   #wincard .ded-he{font-size:1.6rem; line-height:1.7; color:#b3001b;}
@@ -79,13 +79,13 @@
   .dedication .ded-fa{font-size:1.5rem; color:#1565d8;}
   .dedication .ded-orn{color:#1aa64b; letter-spacing:.4em; font-size:1.2rem;}
   .ded-foot{
-    margin:4px auto 2px; color:#b3001b; font-size:clamp(.85rem,1.7vmin,1.15rem);
-    line-height:1.4; font-weight:bold; flex-shrink:0;
+    margin:2px auto 0; color:#b3001b; font-size:clamp(.8rem,1.5vmin,1.05rem);
+    line-height:1.2; font-weight:bold; flex-shrink:0;
   }
   /* play screen fills the viewport; the board auto-sizes to leftover space */
   #game{
     display:none; flex-direction:column; align-items:center; justify-content:center;
-    height:100vh; height:100dvh; overflow:hidden; padding:6px 8px 12px; gap:2px; margin:0 auto;
+    height:100vh; height:100dvh; overflow:hidden; padding:4px 6px 6px; gap:1px; margin:0 auto;
   }
   /* menu fills the viewport and is scaled to fit (never scrolls) */
   #menu{
@@ -128,8 +128,8 @@
     /* exact width/height are set by fitGameCanvas() */
   }
   #banner{
-    font-size:clamp(1.5rem,3.6vmin,2.4rem); font-weight:bold; color:#1a1a1a;
-    padding:3px 10px; min-height:1.1em; line-height:1.1;
+    font-size:clamp(1.3rem,3vmin,2rem); font-weight:bold; color:#1a1a1a;
+    padding:1px 10px; min-height:1em; line-height:1.05;
   }
   .turn-dot{
     display:inline-block; width:1em; height:1em; border-radius:50%;
@@ -138,7 +138,7 @@
   }
   #controls{
     display:flex; flex-wrap:wrap; gap:clamp(6px,1.2vmin,12px); justify-content:center;
-    align-items:center; margin:4px 0 2px;
+    align-items:center; margin:2px 0 0;
   }
   /* the one big primary action */
   #btnRoll{
@@ -622,9 +622,13 @@ function fitGameCanvas(){
   // space taken by chrome (none on touch — board only)
   let used = parseFloat(s.paddingTop) + parseFloat(s.paddingBottom);
   if (!IS_TOUCH){
-    used += 8;
-    ['gametitle', 'banner', 'controls'].forEach(id => { const e = document.getElementById(id); if (e) used += e.offsetHeight; });
-    const foot = game.querySelector('.ded-foot'); if (foot && getComputedStyle(foot).display !== 'none') used += foot.offsetHeight;
+    const gap = parseFloat(s.rowGap || s.gap) || 0;
+    ['gametitle', 'scoreboard', 'banner', 'controls'].forEach(id => {
+      const e = document.getElementById(id);
+      if (e && e.offsetHeight){ used += e.offsetHeight + gap; }
+    });
+    const foot = game.querySelector('.ded-foot');
+    if (foot && getComputedStyle(foot).display !== 'none' && foot.offsetHeight){ used += foot.offsetHeight + gap; }
   }
   const availH = vh - used;
   const availW = Math.min(game.clientWidth, vw) - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight);
