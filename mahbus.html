@@ -6,8 +6,9 @@
 <title>המחבוס של סבא בוריס</title>
 <style>
   :root{
-    --bg:#1f2a33; --panel:#27343f; --ink:#f4ead2; --accent:#e0a52e;
-    --good:#3fae5a; --bad:#d2553f; --wood:#7a4a23; --wood2:#925a2c;
+    /* bright, high-contrast scheme — easy to read for an elderly player */
+    --bg:#fff7e6; --panel:#ffffff; --ink:#1a1a1a; --accent:#1565d8;
+    --good:#1aa64b; --bad:#d2553f; --wood:#7a4a23; --wood2:#925a2c;
     --felt:#0f5132; --felt2:#0b3d27;
   }
   *{box-sizing:border-box;}
@@ -17,76 +18,69 @@
     font-family:Georgia,"Times New Roman",serif; text-align:center;
     -webkit-font-smoothing:antialiased;
     background-color:var(--bg);
-    /* faint Persian-style gold diamond lattice */
-    background-image:
-      repeating-linear-gradient(45deg,  rgba(201,164,60,0.05) 0 2px, transparent 2px 24px),
-      repeating-linear-gradient(-45deg, rgba(201,164,60,0.05) 0 2px, transparent 2px 24px);
   }
-  h1{margin:.3em 0 .05em; font-size:3.4rem; letter-spacing:1px; color:#e9c46a;
-     text-shadow:0 2px 4px rgba(0,0,0,.4);}
-  .title-name{color:#e9c46a; font-size:2.1rem; font-weight:bold; margin:.15em 0;}
-  .title-name .fa{font-size:1.5rem; opacity:.9; font-weight:normal;}
-  .flourish{color:#c9a43c; font-size:1.7rem; letter-spacing:.5em; margin:.1em 0 .3em;}
+  h1{margin:.3em 0 .05em; font-size:3.6rem; letter-spacing:1px; color:#b3001b;
+     font-weight:bold; text-shadow:none;}
+  .title-name{color:#1565d8; font-size:2.1rem; font-weight:bold; margin:.15em 0;}
+  .title-name .fa{font-size:1.5rem; opacity:.95; font-weight:normal;}
+  .flourish{color:#1aa64b; font-size:1.7rem; letter-spacing:.5em; margin:.1em 0 .3em;}
   /* gold plaque shown above the board on the playing screen */
   #gametitle{
     margin:1px auto 2px; padding:clamp(2px,0.6vmin,6px) clamp(10px,2vmin,20px);
     display:inline-block; border-radius:10px; line-height:1.15;
-    color:#e9c46a; font-size:clamp(.9rem,2.2vmin,1.4rem); font-weight:bold;
-    border:1px solid rgba(201,164,60,.55); background:rgba(201,164,60,.08);
-    box-shadow:0 0 0 2px rgba(201,164,60,.16);
+    color:#b3001b; font-size:clamp(.9rem,2.2vmin,1.4rem); font-weight:bold;
+    border:2px solid #1565d8; background:#ffffff;
   }
-  #gametitle .fa{font-size:clamp(.7rem,1.6vmin,1.05rem); opacity:.9; font-weight:normal;}
+  #gametitle .fa{font-size:clamp(.7rem,1.6vmin,1.05rem); opacity:.9; font-weight:normal; color:#1565d8;}
   /* opponent intro card (Hard mode) */
   #oppcard{
     position:fixed; left:50%; top:50%; transform:translate(-50%,-50%) scale(.8);
-    background:linear-gradient(160deg,#2a3640,#1a242c);
-    border:2px solid #c9a43c; border-radius:20px;
-    box-shadow:0 0 0 6px rgba(201,164,60,.22), 0 18px 50px rgba(0,0,0,.65);
-    padding:28px 38px; color:#e9c46a; z-index:70; max-width:88%; text-align:center;
+    background:#ffffff;
+    border:4px solid #1565d8; border-radius:20px;
+    box-shadow:0 18px 50px rgba(0,0,0,.4);
+    padding:28px 38px; color:#1a1a1a; z-index:70; max-width:88%; text-align:center;
     opacity:0; pointer-events:none; transition:opacity .45s, transform .45s;
   }
   #oppcard.show{opacity:1; transform:translate(-50%,-50%) scale(1); pointer-events:auto;}
-  #oppcard .opp-orn{color:#c9a43c; letter-spacing:.4em; font-size:1.1rem;}
-  #oppcard .opp-emoji{font-size:4.2rem; line-height:1.1; margin:6px 0;
-    filter:drop-shadow(0 3px 6px rgba(0,0,0,.5));}
-  #oppcard .opp-vs{font-size:1.05rem; color:#cdbf9f; letter-spacing:.2em;}
-  #oppcard .opp-name{font-size:2.5rem; font-weight:bold; margin:2px 0;}
-  #oppcard .opp-fa{font-size:1.4rem; opacity:.85; margin-bottom:6px;}
-  #oppcard .opp-desc{font-size:1.5rem; color:#f4ead2;
-    border-top:1px solid rgba(201,164,60,.4); padding-top:10px; margin-top:8px;}
+  #oppcard .opp-orn{color:#1aa64b; letter-spacing:.4em; font-size:1.1rem;}
+  #oppcard .opp-emoji{font-size:4.2rem; line-height:1.1; margin:6px 0;}
+  #oppcard .opp-vs{font-size:1.05rem; color:#1565d8; letter-spacing:.2em; font-weight:bold;}
+  #oppcard .opp-name{font-size:2.5rem; font-weight:bold; margin:2px 0; color:#b3001b;}
+  #oppcard .opp-fa{font-size:1.4rem; color:#1565d8; margin-bottom:6px;}
+  #oppcard .opp-desc{font-size:1.5rem; color:#1a1a1a; font-weight:bold;
+    border-top:2px solid #1aa64b; padding-top:10px; margin-top:8px;}
   /* win celebration card */
   #wincard{
     position:fixed; left:50%; top:42%; transform:translate(-50%,-50%) scale(.9);
-    background:rgba(20,28,34,.96); border:2px solid #c9a43c; border-radius:18px;
-    box-shadow:0 0 0 6px rgba(201,164,60,.25), 0 12px 40px rgba(0,0,0,.6);
-    padding:26px 34px; color:#e9c46a; z-index:60; max-width:90%; text-align:center;
+    background:#ffffff; border:4px solid #1aa64b; border-radius:18px;
+    box-shadow:0 12px 40px rgba(0,0,0,.4);
+    padding:26px 34px; color:#1a1a1a; z-index:60; max-width:90%; text-align:center;
     opacity:0; pointer-events:none; transition:opacity .4s, transform .4s;
   }
   #wincard.show{opacity:1; transform:translate(-50%,-50%) scale(1); pointer-events:auto;}
-  #wincard #wintext{font-size:2.8rem; font-weight:bold; margin-bottom:4px;}
-  #wincard #wintype{font-size:1.7rem; font-weight:bold; color:#f0c64b; margin-bottom:8px; min-height:0;}
+  #wincard #wintext{font-size:2.8rem; font-weight:bold; margin-bottom:4px; color:#b3001b;}
+  #wincard #wintype{font-size:1.7rem; font-weight:bold; color:#1aa64b; margin-bottom:8px; min-height:0;}
   #wincard #wintype:empty{display:none;}
-  #wincard #winscore{font-size:1.5rem; color:#f4ead2; margin-bottom:12px;
-    padding:6px 0; border-top:1px solid rgba(201,164,60,.4); border-bottom:1px solid rgba(201,164,60,.4);}
-  #scoreboard{color:#e9c46a; font-size:clamp(.9rem,1.9vmin,1.25rem); font-weight:bold;
+  #wincard #winscore{font-size:1.5rem; color:#1565d8; font-weight:bold; margin-bottom:12px;
+    padding:6px 0; border-top:2px solid #1aa64b; border-bottom:2px solid #1aa64b;}
+  #scoreboard{color:#b3001b; font-size:clamp(.9rem,1.9vmin,1.25rem); font-weight:bold;
     margin:1px 0 2px; letter-spacing:.05em;}
-  #scoreboard .sc-reset{font-size:.8em; color:#cdbf9f; cursor:pointer; opacity:.7;
+  #scoreboard .sc-reset{font-size:.8em; color:#1565d8; cursor:pointer;
     text-decoration:underline; margin-inline-start:.6em;}
-  #wincard .ded-he{font-size:1.6rem; line-height:1.7;}
-  #wincard .ded-fa{font-size:1.45rem; opacity:.95; line-height:1.7;}
-  #wincard .tap{font-size:1.1rem; opacity:.6; margin-top:14px;}
+  #wincard .ded-he{font-size:1.6rem; line-height:1.7; color:#b3001b;}
+  #wincard .ded-fa{font-size:1.45rem; line-height:1.7; color:#1565d8;}
+  #wincard .tap{font-size:1.1rem; opacity:.7; margin-top:14px; color:#555;}
   .dedication{
     margin:18px auto; padding:18px 24px; max-width:640px; border-radius:16px;
-    border:1px solid rgba(201,164,60,.55); background:rgba(201,164,60,.08);
-    box-shadow:0 0 0 4px var(--panel), 0 0 0 6px rgba(201,164,60,.35);
-    color:#e9c46a; line-height:1.9;
+    border:3px solid #1aa64b; background:#ffffff;
+    color:#1a1a1a; line-height:1.9; font-weight:bold;
   }
-  .dedication .ded-he{font-size:1.7rem;}
-  .dedication .ded-fa{font-size:1.5rem; opacity:.95;}
-  .dedication .ded-orn{color:#c9a43c; letter-spacing:.4em; font-size:1.2rem;}
+  .dedication .ded-he{font-size:1.7rem; color:#b3001b;}
+  .dedication .ded-fa{font-size:1.5rem; color:#1565d8;}
+  .dedication .ded-orn{color:#1aa64b; letter-spacing:.4em; font-size:1.2rem;}
   .ded-foot{
-    margin:3px auto 0; color:#c9a43c; font-size:clamp(.65rem,1.5vmin,1rem);
-    line-height:1.4; opacity:.9;
+    margin:3px auto 0; color:#1565d8; font-size:clamp(.65rem,1.5vmin,1rem);
+    line-height:1.4; font-weight:bold;
   }
   /* play screen fills the viewport; the board auto-sizes to leftover space */
   #game{
@@ -108,14 +102,15 @@
   .howto b{color:var(--accent);}
   .howto p{margin:.35em 0;}
   .bigbtn{
-    font-family:inherit; font-size:1.85rem; font-weight:bold; color:#1f2a33;
-    background:var(--accent); border:none; border-radius:14px;
-    padding:24px 38px; margin:12px; cursor:pointer; min-width:300px;
-    box-shadow:0 5px 0 #a9781f; transition:transform .05s;
+    font-family:inherit; font-size:2.2rem; font-weight:bold; color:#fff;
+    background:#1aa64b; border:none; border-radius:16px;
+    padding:28px 44px; margin:14px; cursor:pointer; min-width:340px;
+    box-shadow:0 6px 0 #127a37; transition:transform .05s;
   }
   .bigbtn:hover{transform:translateY(-2px);}
-  .bigbtn:active{transform:translateY(2px); box-shadow:0 2px 0 #a9781f;}
-  .bigbtn.alt{background:#5d7488; color:#fff; box-shadow:0 5px 0 #3c4d5c;}
+  .bigbtn:active{transform:translateY(2px); box-shadow:0 3px 0 #127a37;}
+  .bigbtn.alt{background:#1565d8; color:#fff; box-shadow:0 6px 0 #0d418c;}
+  .bigbtn.alt:active{box-shadow:0 3px 0 #0d418c;}
   .level-label{font-size:1.7rem; margin-top:14px; color:#e9c46a; font-weight:bold;}
   .level-row{display:flex; gap:14px; justify-content:center; flex-wrap:wrap;}
   .bigbtn.lvl{min-width:200px; font-size:1.7rem; padding:22px 24px;}
@@ -126,7 +121,7 @@
     /* exact width/height are set by fitGameCanvas() */
   }
   #banner{
-    font-size:clamp(1.1rem,2.6vmin,1.7rem); font-weight:bold;
+    font-size:clamp(1.1rem,2.6vmin,1.7rem); font-weight:bold; color:#1a1a1a;
     padding:2px 10px; min-height:1.1em; line-height:1.1;
   }
   #controls{
@@ -136,21 +131,21 @@
   /* the one big primary action */
   #btnRoll{
     font-family:inherit; font-size:clamp(1.1rem,2.8vmin,1.8rem); font-weight:bold; color:#fff;
-    background:var(--good); border:none; border-radius:14px; cursor:pointer;
-    padding:clamp(8px,1.4vmin,14px) clamp(20px,4vmin,44px); box-shadow:0 5px 0 #2c7d40;
+    background:#1aa64b; border:none; border-radius:14px; cursor:pointer;
+    padding:clamp(8px,1.4vmin,14px) clamp(20px,4vmin,44px); box-shadow:0 5px 0 #127a37;
     flex-basis:auto; max-width:680px; white-space:nowrap;
   }
-  #btnRoll:active{transform:translateY(2px); box-shadow:0 2px 0 #2c7d40;}
-  #btnRoll:disabled{opacity:.35; cursor:default;}
+  #btnRoll:active{transform:translateY(2px); box-shadow:0 2px 0 #127a37;}
+  #btnRoll:disabled{opacity:.4; cursor:default;}
   /* secondary buttons */
   .ctrl{
     font-family:inherit; font-size:clamp(.9rem,2vmin,1.3rem); font-weight:bold;
     border:none; border-radius:12px; padding:clamp(7px,1.2vmin,12px) clamp(12px,2.4vmin,24px);
     cursor:pointer; white-space:nowrap;
-    color:#1f2a33; background:#cdbf9f; box-shadow:0 4px 0 #8d8266;
+    color:#fff; background:#1565d8; box-shadow:0 4px 0 #0d418c;
   }
-  .ctrl:active{transform:translateY(2px); box-shadow:0 1px 0 #8d8266;}
-  .ctrl:disabled{opacity:.35; cursor:default; box-shadow:0 3px 0 #8d8266;}
+  .ctrl:active{transform:translateY(2px); box-shadow:0 1px 0 #0d418c;}
+  .ctrl:disabled{opacity:.4; cursor:default; box-shadow:0 4px 0 #0d418c;}
   /* phones: tighten everything so the board + buttons all fit, no scroll */
   @media (max-width:600px){
     #game{padding:4px 4px; gap:1px;}
@@ -192,12 +187,12 @@
     }
     #mobctl .sp{ flex:1; }
     #mobctl button{
-      pointer-events:auto; width:46px; height:46px; border-radius:50%;
-      border:1px solid rgba(201,164,60,.6); background:rgba(18,24,30,.62);
-      color:#e9c46a; font-size:1.45rem; font-weight:bold; cursor:pointer;
-      -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px);
+      pointer-events:auto; width:48px; height:48px; border-radius:50%;
+      border:2px solid #fff; background:#1565d8;
+      color:#fff; font-size:1.45rem; font-weight:bold; cursor:pointer;
+      box-shadow:0 2px 6px rgba(0,0,0,.3);
     }
-    #mobctl button:active{ background:rgba(201,164,60,.3); }
+    #mobctl button:active{ background:#0d418c; }
   }
   /* "please rotate" overlay: only on touch devices in portrait. Pure CSS so it is
      reliable even when JS orientation detection is flaky (in-app browsers). */
@@ -206,7 +201,7 @@
     #rotate{
       display:flex; position:fixed; inset:0; z-index:200;
       flex-direction:column; align-items:center; justify-content:center; gap:18px;
-      background:#16202a; color:#e9c46a; text-align:center; padding:24px;
+      background:#fff7e6; color:#b3001b; text-align:center; padding:24px;
     }
     /* keep the floating controls out of the way while rotating */
     #mobctl{ display:none !important; }
@@ -214,7 +209,7 @@
   #rotate .rot-phone{ font-size:5rem; animation:rotnudge 1.8s ease-in-out infinite; }
   @keyframes rotnudge{ 0%,40%{ transform:rotate(0); } 60%,100%{ transform:rotate(-90deg); } }
   #rotate .rot-he{ font-size:1.9rem; font-weight:bold; }
-  #rotate .rot-fa{ font-size:1.4rem; opacity:.85; }
+  #rotate .rot-fa{ font-size:1.4rem; color:#1565d8; font-weight:bold; }
   #toast{
     position:fixed; left:50%; top:14px; transform:translateX(-50%);
     background:#000a; color:#fff; padding:10px 18px; border-radius:10px;
@@ -276,19 +271,7 @@
     <div class="ded-he">מוקדש באהבה לסבא בוריס היקר — מטל ♥</div>
     <div class="ded-fa">تقدیم با عشق به بابابزرگ عزیزم بوریس — تال</div>
   </div>
-  <div class="howto">
-    <p><b>איך מפעילים:</b></p>
-    <p>① לוחצים על הכפתור הירוק הגדול <b>🎲 הטל את הקוביות</b> (או על מקש הרווח).</p>
-    <p>② לוחצים על חייל — המקומות יידלקו בירוק. לוחצים על המקום שאליו רוצים לזוז.</p>
-    <p>③ טעות? לוחצים על <b>↩ בטל מהלך</b>.</p>
-    <p>④ הכפתור <b>🔊</b> מדליק ומכבה את הצלילים.</p>
-  </div>
-  <div class="level-label">משחק נגד המחשב — בחר רמת קושי:</div>
-  <div class="level-row">
-    <button class="bigbtn lvl" onclick="startGame('ai','easy')">🙂 קל</button>
-    <button class="bigbtn lvl" onclick="startGame('ai','medium')">😐 בינוני</button>
-    <button class="bigbtn lvl" onclick="startGame('ai','hard')">😤 קשה</button>
-  </div>
+  <button class="bigbtn" onclick="startGame('ai','hard')">🎲 משחק חדש</button>
   <button class="bigbtn alt" onclick="startGame('hotseat')">👥 שני שחקנים</button>
 </div></div>
 
@@ -1333,11 +1316,11 @@ function draw(){
     const human = STATE.mode === 'hotseat' || STATE.current === HUMAN;
     if (STATE.phase === 'await' && human && !AI_BUSY && !ROLLING){
       const who = STATE.current === 'W' ? 'הלבן' : 'השחור';
-      drawText('🎲  ' + who + ' — הקש לזריקה', mx, my, 'bold 30px Georgia', 'rgba(255,255,255,0.95)');
+      drawText('🎲  ' + who + ' — הקש לזריקה', mx, my, 'bold 30px Georgia', '#b3001b');
     } else if (STATE.phase === 'over'){
-      drawText('הקש למשחק חדש', mx, my + 46, 'bold 26px Georgia', 'rgba(255,255,255,0.9)');
+      drawText('הקש למשחק חדש', mx, my + 46, 'bold 26px Georgia', '#b3001b');
     } else if (STATE.mode === 'ai' && STATE.current === AI && !ROLLING){
-      drawText('🤖 …', mx, my, 'bold 30px Georgia', 'rgba(255,255,255,0.85)');
+      drawText('🤖 …', mx, my, 'bold 30px Georgia', '#1a1a1a');
     }
   }
 
