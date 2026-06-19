@@ -24,14 +24,11 @@
   .title-name{color:#000; font-size:2.1rem; font-weight:bold; margin:.15em 0;}
   .title-name .fa{font-size:1.5rem; opacity:.85; font-weight:normal;}
   .flourish{color:#000; font-size:1.7rem; letter-spacing:.5em; margin:.1em 0 .3em;}
-  /* gold plaque shown above the board on the playing screen */
+  /* title in the side panel */
   #gametitle{
-    margin:0 auto; padding:1px clamp(8px,1.6vmin,16px);
-    display:inline-block; border-radius:8px; line-height:1.1;
-    color:#000; font-size:clamp(.8rem,1.7vmin,1.15rem); font-weight:bold;
-    border:2px solid #000; background:#fff;
+    color:#000; font-size:clamp(1.1rem,2.4vw,1.7rem); font-weight:bold; line-height:1.2;
   }
-  #gametitle .fa{font-size:clamp(.65rem,1.3vmin,.9rem); opacity:.8; font-weight:normal; color:#000;}
+  #gametitle .fa{font-size:clamp(.8rem,1.5vw,1.05rem); opacity:.85; font-weight:normal; color:#000;}
   /* opponent intro card (Hard mode) */
   #oppcard{
     position:fixed; left:50%; top:50%; transform:translate(-50%,-50%) scale(.8);
@@ -63,8 +60,8 @@
   #wincard #wintype:empty{display:none;}
   #wincard #winscore{font-size:1.5rem; color:#000; font-weight:bold; margin-bottom:12px;
     padding:6px 0; border-top:2px solid #000; border-bottom:2px solid #000;}
-  #scoreboard{color:#000; font-size:clamp(.85rem,1.6vmin,1.1rem); font-weight:bold;
-    margin:0; letter-spacing:.05em; line-height:1.1;}
+  #scoreboard{color:#000; font-size:clamp(1rem,2vw,1.4rem); font-weight:bold;
+    margin:0; letter-spacing:.03em; line-height:1.3;}
   #scoreboard .sc-reset{font-size:.8em; color:#000; cursor:pointer;
     text-decoration:underline; margin-inline-start:.6em;}
   #wincard .ded-he{font-size:1.6rem; line-height:1.7; color:#000;}
@@ -79,18 +76,34 @@
   .dedication .ded-fa{font-size:1.5rem; color:#000;}
   .dedication .ded-orn{color:#000; letter-spacing:.4em; font-size:1.2rem;}
   .ded-foot{
-    margin:2px auto 0; color:#000; font-size:clamp(.8rem,1.5vmin,1.05rem);
-    line-height:1.2; font-weight:bold; flex-shrink:0;
+    margin:auto auto 0; color:#000; font-size:clamp(.7rem,1.4vw,.95rem);
+    line-height:1.35; font-weight:bold; flex-shrink:0;
   }
-  /* play screen fills the viewport; the board auto-sizes to leftover space */
+  /* play screen: board on one side, info panel on the other (uses the wide-screen
+     side space instead of stacking small chrome above/below the board) */
   #game{
-    display:none; flex-direction:column; align-items:center; justify-content:center;
-    height:100vh; height:100dvh; overflow:hidden; padding:4px 6px 6px; gap:1px; margin:0 auto;
+    display:none; flex-direction:row; align-items:stretch; justify-content:center;
+    height:100vh; height:100dvh; overflow:hidden; padding:8px; gap:10px; margin:0 auto;
   }
-  /* the board fills all the space left over after the chrome (flexbox measures it) */
+  /* the board fills the space left after the side panel */
   #boardwrap{
-    flex:1 1 auto; min-height:0; width:100%;
+    flex:1 1 auto; min-width:0; height:100%;
     display:flex; align-items:center; justify-content:center; overflow:hidden;
+  }
+  /* side info panel: big readable text + the New Game button */
+  #sidepanel{
+    flex:0 0 auto; width:clamp(180px, 22vw, 300px);
+    display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+    gap:clamp(8px,1.6vh,18px); padding:6px 4px; overflow:hidden; text-align:center;
+  }
+  #sidemini{ display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+  /* narrow/short screens: stack the panel under the board instead of beside it */
+  @media (max-aspect-ratio:13/10){
+    #game{ flex-direction:column; align-items:center; }
+    #boardwrap{ width:100%; height:auto; flex:1 1 auto; }
+    #sidepanel{ width:100%; flex:0 0 auto; flex-direction:row; flex-wrap:wrap;
+      align-items:center; justify-content:center; gap:8px; padding:2px; }
+    #sidepanel .ded-foot{ flex-basis:100%; }
   }
   /* menu fills the viewport and is scaled to fit (never scrolls) */
   #menu{
@@ -116,6 +129,12 @@
   .bigbtn:active{transform:translateY(2px); box-shadow:0 3px 0 #777;}
   .bigbtn.alt{background:#fff; color:#000; border:3px solid #000; box-shadow:0 6px 0 #777;}
   .bigbtn.alt:active{box-shadow:0 3px 0 #777;}
+  /* New Game button inside the side panel: fits the panel width */
+  #sidepanel #btnNew.bigbtn{
+    font-size:clamp(1.3rem,2.6vw,1.9rem); min-width:0; width:100%;
+    padding:clamp(14px,2.4vh,24px) 10px; margin:0;
+  }
+  #sidepanel .ctrl{ font-size:clamp(.95rem,1.9vw,1.3rem); padding:10px 16px; }
   /* discreet two-player link, bottom corner of the start screen only */
   #twoPlayerLink{
     position:fixed; bottom:10px; left:12px; z-index:30;
@@ -133,12 +152,13 @@
     /* exact width/height are set by fitGameCanvas() */
   }
   #banner{
-    font-size:clamp(1.4rem,3.2vmin,2.1rem); font-weight:bold; color:#000;
-    padding:1px 10px; min-height:1em; line-height:1.05;
+    font-size:clamp(1.4rem,2.8vw,2.2rem); font-weight:bold; color:#000;
+    padding:6px 6px; line-height:1.25;
+    border-top:3px solid #000; border-bottom:3px solid #000; width:100%;
   }
   .turn-dot{
-    display:inline-block; width:1.05em; height:1.05em; border-radius:50%;
-    border:3px solid #000; vertical-align:-0.15em; margin-inline-start:.3em;
+    display:inline-block; width:1.1em; height:1.1em; border-radius:50%;
+    border:3px solid #000; vertical-align:-0.18em; margin-inline-start:.35em;
   }
   #controls{
     display:flex; flex-wrap:wrap; gap:clamp(6px,1.2vmin,12px); justify-content:center;
@@ -187,7 +207,7 @@
      Desktop/laptop (pointer:fine) is completely unaffected. */
   @media (pointer:coarse){
     html,body{ position:fixed; width:100%; height:100%; touch-action:none; }
-    #gametitle, #banner, #controls, .ded-foot, #scoreboard{ display:none !important; }
+    #sidepanel{ display:none !important; }
     #game{ padding:env(safe-area-inset-top,10px) env(safe-area-inset-right,10px) env(safe-area-inset-bottom,10px) env(safe-area-inset-left,10px); gap:0; justify-content:center; }
     canvas{ touch-action:none; }
     #menu .howto{ display:none; }            /* the how-to is about buttons that aren't in mobile mode */
@@ -294,19 +314,19 @@
 
 <!-- ===================== GAME ===================== -->
 <div id="game">
-  <div id="gametitle">מַחְבּוּס · המשחק של סבא בוריס <span class="fa">· بابابزرگ بوریس</span></div>
-  <div id="scoreboard"></div>
-  <div id="banner">&nbsp;</div>
   <div id="boardwrap"><canvas id="board" width="960" height="620"></canvas></div>
-  <div id="controls">
-    <button id="btnRoll" onclick="onRoll()" style="display:none">🎲 הטל את הקוביות</button>
-    <button id="btnUndo"  class="ctrl" onclick="onUndo()">↩ בטל מהלך</button>
-    <button id="btnNew"   class="ctrl" onclick="startGame(STATE.mode, STATE.level)">משחק חדש</button>
-    <button id="btnMenu"  class="ctrl" onclick="toMenu()">תפריט</button>
-    <button id="btnSound" class="ctrl" onclick="toggleSound()">🔊</button>
-  </div>
-  <div class="ded-foot">
-    מוקדש באהבה לסבא בוריס היקר — מטל ♥ &nbsp;·&nbsp; تقدیم با عشق به بابابزرگ عزیزم بوریس — تال
+  <div id="sidepanel">
+    <div id="gametitle">מַחְבּוּס<span class="fa"><br>המשחק של סבא בוריס</span></div>
+    <div id="banner">&nbsp;</div>
+    <div id="scoreboard"></div>
+    <button id="btnNew" class="bigbtn" onclick="startGame('ai','hard')">🎲 משחק חדש</button>
+    <div id="sidemini">
+      <button id="btnUndo"  class="ctrl" onclick="onUndo()">↩ בטל</button>
+      <button id="btnMenu"  class="ctrl" onclick="toMenu()">תפריט</button>
+      <button id="btnSound" class="ctrl" onclick="toggleSound()">🔊</button>
+    </div>
+    <button id="btnRoll" onclick="onRoll()" style="display:none">🎲</button>
+    <div class="ded-foot">מוקדש באהבה לסבא בוריס היקר — מטל ♥<br>تقدیم با عشق به بابابزرگ عزیزم بوریس — تال</div>
   </div>
 </div>
 
@@ -1651,21 +1671,19 @@ function drawCountBadge(x, y, n){
 
 function drawChecker(x, y, owner, r, locked){
   const white = owner === 'W';
-  // high-contrast solid disc: pure white or pure black, with a THICK contrasting
-  // ring so each piece reads clearly against any background (weak-eyes friendly)
+  // clean solid disc with a subtle 3D sheen and a single crisp high-contrast edge
   ctx.save();
-  ctx.shadowColor = 'rgba(0,0,0,0.4)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 2;
-  ctx.fillStyle = white ? '#ffffff' : '#000000';
+  ctx.shadowColor = 'rgba(0,0,0,0.35)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 2;
+  const g = ctx.createRadialGradient(x - r*0.3, y - r*0.35, r*0.1, x, y, r);
+  if (white){ g.addColorStop(0, '#ffffff'); g.addColorStop(1, '#dcdcdc'); }
+  else      { g.addColorStop(0, '#333333'); g.addColorStop(1, '#000000'); }
+  ctx.fillStyle = g;
   ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
   ctx.restore();
-  // outer ring in the OPPOSITE colour (black on white, white on black)
-  ctx.lineWidth = Math.max(3, r * 0.22);
+  // single crisp edge: black ring on white pieces, white ring on black pieces
+  ctx.lineWidth = Math.max(2.5, r * 0.14);
   ctx.strokeStyle = white ? '#000000' : '#ffffff';
   ctx.beginPath(); ctx.arc(x, y, r - ctx.lineWidth/2, 0, 7); ctx.stroke();
-  // a thin inner ring of the body colour to separate ring from a same-colour neighbour
-  ctx.lineWidth = 1.5;
-  ctx.strokeStyle = white ? '#000000' : '#ffffff';
-  ctx.beginPath(); ctx.arc(x, y, r * 0.42, 0, 7); ctx.stroke();
   if (locked){ drawText('🔒', x, y, `bold ${Math.round(r*0.95)}px serif`, '#e11'); }
 }
 
