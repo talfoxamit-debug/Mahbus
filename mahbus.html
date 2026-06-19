@@ -6,9 +6,9 @@
 <title>המחבוס של סבא בוריס</title>
 <style>
   :root{
-    /* bright, high-contrast scheme — easy to read for an elderly player */
-    --bg:#fff7e6; --panel:#ffffff; --ink:#1a1a1a; --accent:#1565d8;
-    --good:#1aa64b; --bad:#d2553f; --wood:#7a4a23; --wood2:#925a2c;
+    /* simple black-&-white high-contrast scheme for weak eyes */
+    --bg:#ffffff; --panel:#ffffff; --ink:#000000; --accent:#000000;
+    --good:#1a1a1a; --bad:#000000; --wood:#7a4a23; --wood2:#925a2c;
     --felt:#0f5132; --felt2:#0b3d27;
   }
   *{box-sizing:border-box;}
@@ -19,67 +19,67 @@
     -webkit-font-smoothing:antialiased;
     background-color:var(--bg);
   }
-  h1{margin:.3em 0 .05em; font-size:3.6rem; letter-spacing:1px; color:#b3001b;
+  h1{margin:.3em 0 .05em; font-size:3.8rem; letter-spacing:1px; color:#000;
      font-weight:bold; text-shadow:none;}
-  .title-name{color:#1565d8; font-size:2.1rem; font-weight:bold; margin:.15em 0;}
-  .title-name .fa{font-size:1.5rem; opacity:.95; font-weight:normal;}
-  .flourish{color:#1aa64b; font-size:1.7rem; letter-spacing:.5em; margin:.1em 0 .3em;}
+  .title-name{color:#000; font-size:2.1rem; font-weight:bold; margin:.15em 0;}
+  .title-name .fa{font-size:1.5rem; opacity:.85; font-weight:normal;}
+  .flourish{color:#000; font-size:1.7rem; letter-spacing:.5em; margin:.1em 0 .3em;}
   /* gold plaque shown above the board on the playing screen */
   #gametitle{
     margin:0 auto; padding:1px clamp(8px,1.6vmin,16px);
     display:inline-block; border-radius:8px; line-height:1.1;
-    color:#b3001b; font-size:clamp(.8rem,1.7vmin,1.15rem); font-weight:bold;
-    border:2px solid #1565d8; background:#ffffff;
+    color:#000; font-size:clamp(.8rem,1.7vmin,1.15rem); font-weight:bold;
+    border:2px solid #000; background:#fff;
   }
-  #gametitle .fa{font-size:clamp(.65rem,1.3vmin,.9rem); opacity:.9; font-weight:normal; color:#1565d8;}
+  #gametitle .fa{font-size:clamp(.65rem,1.3vmin,.9rem); opacity:.8; font-weight:normal; color:#000;}
   /* opponent intro card (Hard mode) */
   #oppcard{
     position:fixed; left:50%; top:50%; transform:translate(-50%,-50%) scale(.8);
-    background:#ffffff;
-    border:4px solid #1565d8; border-radius:20px;
+    background:#fff;
+    border:4px solid #000; border-radius:20px;
     box-shadow:0 18px 50px rgba(0,0,0,.4);
-    padding:28px 38px; color:#1a1a1a; z-index:70; max-width:88%; text-align:center;
+    padding:28px 38px; color:#000; z-index:70; max-width:88%; text-align:center;
     opacity:0; pointer-events:none; transition:opacity .45s, transform .45s;
   }
   #oppcard.show{opacity:1; transform:translate(-50%,-50%) scale(1); pointer-events:auto;}
-  #oppcard .opp-orn{color:#1aa64b; letter-spacing:.4em; font-size:1.1rem;}
+  #oppcard .opp-orn{color:#000; letter-spacing:.4em; font-size:1.1rem;}
   #oppcard .opp-emoji{font-size:4.2rem; line-height:1.1; margin:6px 0;}
-  #oppcard .opp-vs{font-size:1.05rem; color:#1565d8; letter-spacing:.2em; font-weight:bold;}
-  #oppcard .opp-name{font-size:2.5rem; font-weight:bold; margin:2px 0; color:#b3001b;}
-  #oppcard .opp-fa{font-size:1.4rem; color:#1565d8; margin-bottom:6px;}
-  #oppcard .opp-desc{font-size:1.5rem; color:#1a1a1a; font-weight:bold;
-    border-top:2px solid #1aa64b; padding-top:10px; margin-top:8px;}
+  #oppcard .opp-vs{font-size:1.05rem; color:#000; letter-spacing:.2em; font-weight:bold;}
+  #oppcard .opp-name{font-size:2.5rem; font-weight:bold; margin:2px 0; color:#000;}
+  #oppcard .opp-fa{font-size:1.4rem; color:#000; margin-bottom:6px;}
+  #oppcard .opp-desc{font-size:1.5rem; color:#000; font-weight:bold;
+    border-top:2px solid #000; padding-top:10px; margin-top:8px;}
   /* win celebration card */
   #wincard{
     position:fixed; left:50%; top:42%; transform:translate(-50%,-50%) scale(.9);
-    background:#ffffff; border:4px solid #1aa64b; border-radius:18px;
+    background:#fff; border:4px solid #000; border-radius:18px;
     box-shadow:0 12px 40px rgba(0,0,0,.4);
-    padding:26px 34px; color:#1a1a1a; z-index:60; max-width:90%; text-align:center;
+    padding:26px 34px; color:#000; z-index:60; max-width:90%; text-align:center;
     opacity:0; pointer-events:none; transition:opacity .4s, transform .4s;
   }
   #wincard.show{opacity:1; transform:translate(-50%,-50%) scale(1); pointer-events:auto;}
-  #wincard #wintext{font-size:2.8rem; font-weight:bold; margin-bottom:4px; color:#b3001b;}
-  #wincard #wintype{font-size:1.7rem; font-weight:bold; color:#1aa64b; margin-bottom:8px; min-height:0;}
+  #wincard #wintext{font-size:2.8rem; font-weight:bold; margin-bottom:4px; color:#000;}
+  #wincard #wintype{font-size:1.7rem; font-weight:bold; color:#000; margin-bottom:8px; min-height:0;}
   #wincard #wintype:empty{display:none;}
-  #wincard #winscore{font-size:1.5rem; color:#1565d8; font-weight:bold; margin-bottom:12px;
-    padding:6px 0; border-top:2px solid #1aa64b; border-bottom:2px solid #1aa64b;}
-  #scoreboard{color:#b3001b; font-size:clamp(.85rem,1.6vmin,1.1rem); font-weight:bold;
+  #wincard #winscore{font-size:1.5rem; color:#000; font-weight:bold; margin-bottom:12px;
+    padding:6px 0; border-top:2px solid #000; border-bottom:2px solid #000;}
+  #scoreboard{color:#000; font-size:clamp(.85rem,1.6vmin,1.1rem); font-weight:bold;
     margin:0; letter-spacing:.05em; line-height:1.1;}
-  #scoreboard .sc-reset{font-size:.8em; color:#1565d8; cursor:pointer;
+  #scoreboard .sc-reset{font-size:.8em; color:#000; cursor:pointer;
     text-decoration:underline; margin-inline-start:.6em;}
-  #wincard .ded-he{font-size:1.6rem; line-height:1.7; color:#b3001b;}
-  #wincard .ded-fa{font-size:1.45rem; line-height:1.7; color:#1565d8;}
-  #wincard .tap{font-size:1.1rem; opacity:.7; margin-top:14px; color:#555;}
+  #wincard .ded-he{font-size:1.6rem; line-height:1.7; color:#000;}
+  #wincard .ded-fa{font-size:1.45rem; line-height:1.7; color:#000;}
+  #wincard .tap{font-size:1.1rem; opacity:.6; margin-top:14px; color:#000;}
   .dedication{
     margin:18px auto; padding:18px 24px; max-width:640px; border-radius:16px;
-    border:3px solid #1aa64b; background:#ffffff;
-    color:#1a1a1a; line-height:1.9; font-weight:bold;
+    border:3px solid #000; background:#fff;
+    color:#000; line-height:1.9; font-weight:bold;
   }
-  .dedication .ded-he{font-size:1.7rem; color:#b3001b;}
-  .dedication .ded-fa{font-size:1.5rem; color:#1565d8;}
-  .dedication .ded-orn{color:#1aa64b; letter-spacing:.4em; font-size:1.2rem;}
+  .dedication .ded-he{font-size:1.7rem; color:#000;}
+  .dedication .ded-fa{font-size:1.5rem; color:#000;}
+  .dedication .ded-orn{color:#000; letter-spacing:.4em; font-size:1.2rem;}
   .ded-foot{
-    margin:2px auto 0; color:#b3001b; font-size:clamp(.8rem,1.5vmin,1.05rem);
+    margin:2px auto 0; color:#000; font-size:clamp(.8rem,1.5vmin,1.05rem);
     line-height:1.2; font-weight:bold; flex-shrink:0;
   }
   /* play screen fills the viewport; the board auto-sizes to leftover space */
@@ -107,15 +107,15 @@
   .howto b{color:var(--accent);}
   .howto p{margin:.35em 0;}
   .bigbtn{
-    font-family:inherit; font-size:2.2rem; font-weight:bold; color:#fff;
-    background:#1aa64b; border:none; border-radius:16px;
-    padding:28px 44px; margin:14px; cursor:pointer; min-width:340px;
-    box-shadow:0 6px 0 #127a37; transition:transform .05s;
+    font-family:inherit; font-size:2.4rem; font-weight:bold; color:#fff;
+    background:#000; border:3px solid #000; border-radius:16px;
+    padding:30px 48px; margin:14px; cursor:pointer; min-width:360px;
+    box-shadow:0 6px 0 #777; transition:transform .05s;
   }
   .bigbtn:hover{transform:translateY(-2px);}
-  .bigbtn:active{transform:translateY(2px); box-shadow:0 3px 0 #127a37;}
-  .bigbtn.alt{background:#1565d8; color:#fff; box-shadow:0 6px 0 #0d418c;}
-  .bigbtn.alt:active{box-shadow:0 3px 0 #0d418c;}
+  .bigbtn:active{transform:translateY(2px); box-shadow:0 3px 0 #777;}
+  .bigbtn.alt{background:#fff; color:#000; border:3px solid #000; box-shadow:0 6px 0 #777;}
+  .bigbtn.alt:active{box-shadow:0 3px 0 #777;}
   /* discreet two-player link, bottom corner of the start screen only */
   #twoPlayerLink{
     position:fixed; bottom:10px; left:12px; z-index:30;
@@ -133,13 +133,12 @@
     /* exact width/height are set by fitGameCanvas() */
   }
   #banner{
-    font-size:clamp(1.3rem,3vmin,2rem); font-weight:bold; color:#1a1a1a;
+    font-size:clamp(1.4rem,3.2vmin,2.1rem); font-weight:bold; color:#000;
     padding:1px 10px; min-height:1em; line-height:1.05;
   }
   .turn-dot{
-    display:inline-block; width:1em; height:1em; border-radius:50%;
-    border:2px solid #1565d8; vertical-align:-0.12em; margin-inline-start:.3em;
-    box-shadow:0 1px 3px rgba(0,0,0,.3);
+    display:inline-block; width:1.05em; height:1.05em; border-radius:50%;
+    border:3px solid #000; vertical-align:-0.15em; margin-inline-start:.3em;
   }
   #controls{
     display:flex; flex-wrap:wrap; gap:clamp(6px,1.2vmin,12px); justify-content:center;
@@ -156,13 +155,13 @@
   #btnRoll:disabled{opacity:.4; cursor:default;}
   /* secondary buttons */
   .ctrl{
-    font-family:inherit; font-size:clamp(.9rem,2vmin,1.3rem); font-weight:bold;
-    border:none; border-radius:12px; padding:clamp(7px,1.2vmin,12px) clamp(12px,2.4vmin,24px);
+    font-family:inherit; font-size:clamp(1rem,2.2vmin,1.4rem); font-weight:bold;
+    border:3px solid #000; border-radius:12px; padding:clamp(8px,1.4vmin,13px) clamp(14px,2.6vmin,26px);
     cursor:pointer; white-space:nowrap;
-    color:#fff; background:#1565d8; box-shadow:0 4px 0 #0d418c;
+    color:#fff; background:#000; box-shadow:0 4px 0 #888;
   }
-  .ctrl:active{transform:translateY(2px); box-shadow:0 1px 0 #0d418c;}
-  .ctrl:disabled{opacity:.4; cursor:default; box-shadow:0 4px 0 #0d418c;}
+  .ctrl:active{transform:translateY(2px); box-shadow:0 1px 0 #888;}
+  .ctrl:disabled{opacity:.35; cursor:default; box-shadow:0 4px 0 #888;}
   /* phones: tighten everything so the board + buttons all fit, no scroll */
   @media (max-width:600px){
     #game{padding:4px 4px; gap:1px;}
@@ -205,7 +204,7 @@
     #mobctl .sp{ flex:1; }
     #mobctl button{
       pointer-events:auto; width:48px; height:48px; border-radius:50%;
-      border:2px solid #fff; background:#1565d8;
+      border:2px solid #fff; background:#000;
       color:#fff; font-size:1.45rem; font-weight:bold; cursor:pointer;
       box-shadow:0 2px 6px rgba(0,0,0,.3);
     }
@@ -218,7 +217,7 @@
     #rotate{
       display:flex; position:fixed; inset:0; z-index:200;
       flex-direction:column; align-items:center; justify-content:center; gap:18px;
-      background:#fff7e6; color:#b3001b; text-align:center; padding:24px;
+      background:#fff; color:#000; text-align:center; padding:24px;
     }
     /* keep the floating controls out of the way while rotating */
     #mobctl{ display:none !important; }
@@ -226,7 +225,7 @@
   #rotate .rot-phone{ font-size:5rem; animation:rotnudge 1.8s ease-in-out infinite; }
   @keyframes rotnudge{ 0%,40%{ transform:rotate(0); } 60%,100%{ transform:rotate(-90deg); } }
   #rotate .rot-he{ font-size:1.9rem; font-weight:bold; }
-  #rotate .rot-fa{ font-size:1.4rem; color:#1565d8; font-weight:bold; }
+  #rotate .rot-fa{ font-size:1.4rem; color:#000; font-weight:bold; }
   #toast{
     position:fixed; left:50%; top:14px; transform:translateX(-50%);
     background:#000a; color:#fff; padding:10px 18px; border-radius:10px;
@@ -1254,11 +1253,11 @@ function aiTurn(){
 const cv = document.getElementById('board');
 const ctx = cv.getContext('2d');
 const W = cv.width, H = cv.height;
-const M = 30, TRAY = 74, BAR = 40;
+const M = 14, TRAY = 70, BAR = 36;
 const boardL = M, boardR = W - M - TRAY, boardT = M, boardB = H - M;
 const quadW = (boardR - boardL - BAR) / 2;
 const slotW = quadW / 6;
-const R = slotW * 0.42;               // checker radius
+const R = slotW * 0.48;               // checker radius (bigger for weak eyes)
 const ptLen = (boardB - boardT) / 2 - 8;
 const trayL = boardR + 6, trayR = W - M;
 
@@ -1303,7 +1302,7 @@ function draw(){
   if (sel !== null){
     const c = colForPoint(sel), x = xForCol(c), bottom = isBottom(sel);
     const cy = bottom ? boardB - R - 1 : boardT + R + 1;
-    ctx.strokeStyle = '#ffe08a'; ctx.lineWidth = 5;
+    ctx.strokeStyle = '#ff8a00'; ctx.lineWidth = 6;
     ctx.beginPath(); ctx.arc(x, cy, R + 4, 0, 7); ctx.stroke();
   }
 
@@ -1321,7 +1320,7 @@ function draw(){
         dx = xForCol(colForPoint(pv.to));
         dy = checkerY(isBottom(pv.to), (dp.top || dp.trapped) ? topVisibleSlot(dp) : 0);
       }
-      ctx.strokeStyle = 'rgba(63,174,90,0.6)'; ctx.lineWidth = 3; ctx.setLineDash([7, 5]);
+      ctx.strokeStyle = '#00a000'; ctx.lineWidth = 4; ctx.setLineDash([8, 5]);
       ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(dx, dy); ctx.stroke();
       ctx.setLineDash([]);
     }
@@ -1329,7 +1328,7 @@ function draw(){
   if (interactive){
     for (const pv of previews){
       if (pv.to === 'off'){
-        ctx.strokeStyle = '#ffe08a'; ctx.lineWidth = 5;
+        ctx.strokeStyle = '#ff8a00'; ctx.lineWidth = 6;
         ctx.strokeRect(trayL + 3, boardT + 3, trayR - trayL - 6, boardB - boardT - 6);
         drawStepLabel((trayL + trayR) / 2, (boardT + boardB) / 2, pv.step);
       } else {
@@ -1360,9 +1359,9 @@ function draw(){
     const human = STATE.mode === 'hotseat' || STATE.current === HUMAN;
     if (STATE.phase === 'await' && human && !AI_BUSY && !ROLLING){
       const who = STATE.current === 'W' ? 'הלבן' : 'השחור';
-      drawText('🎲  תור ' + who, mx, my, 'bold 30px Georgia', '#b3001b');
+      drawText('🎲  תור ' + who, mx, my, 'bold 34px Georgia', '#000');
     } else if (STATE.phase === 'over'){
-      drawText('הקש למשחק חדש', mx, my + 46, 'bold 26px Georgia', '#b3001b');
+      drawText('הקש למשחק חדש', mx, my + 46, 'bold 28px Georgia', '#000');
     } else if (STATE.mode === 'ai' && STATE.current === AI && !ROLLING){
       drawText('🤖 …', mx, my, 'bold 30px Georgia', '#1a1a1a');
     }
@@ -1397,8 +1396,8 @@ function drawText(txt, x, y, font, color){
 }
 function drawHomeLabels(){
   const cx = (trayL + trayR) / 2, mid = (boardT + boardB) / 2;
-  drawText('בית שחור', cx, mid - 26, '15px Georgia', 'rgba(207,224,255,0.85)');
-  drawText('בית לבן',  cx, mid + 26, '15px Georgia', 'rgba(244,234,210,0.85)');
+  drawText('בית שחור', cx, mid - 26, 'bold 15px Georgia', '#fff');
+  drawText('בית לבן',  cx, mid + 26, 'bold 15px Georgia', '#fff');
 }
 
 /* ---------- Persian (Khatam) ornament helpers ---------- */
@@ -1492,84 +1491,35 @@ function buildBoard(){
   const g = BG.getContext('2d');
   const mid = (boardT + boardB) / 2;
 
-  // 1) outer walnut frame
-  paintWood(g, 0, 0, W, H, ['#7a4a22', '#4a2c12', '#5e3a1b']);
+  // 1) plain dark frame (high contrast, no busy ornament)
+  g.fillStyle = '#222'; g.fillRect(0, 0, W, H);
 
-  // 2) Khatam marquetry border band running just inside the outer edge
-  const bw = 12, m0 = 7;
-  paintMarquetry(g, m0, m0, W - 2*m0, bw, true);                       // top
-  paintMarquetry(g, m0, H - m0 - bw, W - 2*m0, bw, true);              // bottom
-  paintMarquetry(g, m0, m0, bw, H - 2*m0, false);                     // left
-  paintMarquetry(g, W - m0 - bw, m0, bw, H - 2*m0, false);            // right
-  goldBevel(g, m0, m0, W - 2*m0, H - 2*m0, 2);
-  goldBevel(g, m0 + bw, m0 + bw, W - 2*(m0+bw), H - 2*(m0+bw), 2);
-
-  // 3) recess shadow around the playfield for depth
-  g.save();
-  g.shadowColor = 'rgba(0,0,0,0.45)'; g.shadowBlur = 16; g.shadowOffsetY = 3;
-  g.fillStyle = '#f3ead6';
+  // 2) white playfield
+  g.fillStyle = '#fafafa';
   g.fillRect(boardL, boardT, boardR - boardL, boardB - boardT);
-  g.restore();
 
-  // 4) playfield: warm ivory with a soft sheen
-  const felt = g.createLinearGradient(0, boardT, 0, boardB);
-  felt.addColorStop(0, '#f6efe0'); felt.addColorStop(0.5, '#fbf6ec'); felt.addColorStop(1, '#f1e7d3');
-  g.fillStyle = felt; g.fillRect(boardL, boardT, boardR - boardL, boardB - boardT);
-  const sheen = g.createRadialGradient((boardL+boardR)/2, mid, 20, (boardL+boardR)/2, mid, 580);
-  sheen.addColorStop(0, 'rgba(255,255,255,0.25)'); sheen.addColorStop(0.7, 'rgba(0,0,0,0.02)');
-  sheen.addColorStop(1, 'rgba(120,90,50,0.10)');
-  g.fillStyle = sheen; g.fillRect(boardL, boardT, boardR - boardL, boardB - boardT);
-
-  // home-zone shading (right side: White home = bottom 1-6, Black home = top 19-24)
-  const zx = boardL + quadW + BAR, zw = boardR - zx;
-  g.fillStyle = 'rgba(176,38,38,0.06)'; g.fillRect(zx, mid, zw, boardB - mid);
-  g.fillStyle = 'rgba(90,60,30,0.06)'; g.fillRect(zx, boardT, zw, mid - boardT);
-
-  // 5) classic red & ivory triangles with a glossy sheen + a small jewel tip
+  // 3) bold alternating grey/white triangles with thick black outlines
   for (let p = 1; p <= 24; p++){
     const c = colForPoint(p), x = xForCol(c), bottom = isBottom(p);
     const baseY = bottom ? boardB : boardT, tipY = bottom ? boardB - ptLen : boardT + ptLen;
-    const red = ((c + (bottom ? 0 : 1)) % 2 === 0);     // offset rows so colours alternate
-    const grad = g.createLinearGradient(0, baseY, 0, tipY);
-    if (red){ grad.addColorStop(0, '#d23b32'); grad.addColorStop(0.6, '#b62b27'); grad.addColorStop(1, '#8e1f1d'); }
-    else    { grad.addColorStop(0, '#fbf7ee'); grad.addColorStop(0.6, '#efe6d2'); grad.addColorStop(1, '#ddceb2'); }
-    const tri = () => { g.beginPath(); g.moveTo(x - slotW*0.46, baseY); g.lineTo(x + slotW*0.46, baseY); g.lineTo(x, tipY); g.closePath(); };
-    g.save();
-    g.shadowColor = 'rgba(0,0,0,0.18)'; g.shadowBlur = 4; g.shadowOffsetY = bottom ? -2 : 2;
-    g.fillStyle = grad; tri(); g.fill();
-    g.restore();
-    // glossy highlight down one side
-    g.fillStyle = 'rgba(255,255,255,0.18)';
-    g.beginPath(); g.moveTo(x - slotW*0.40, baseY); g.lineTo(x - slotW*0.04, baseY); g.lineTo(x, tipY); g.closePath(); g.fill();
-    // thin edge + a small jewel at the tip
-    g.strokeStyle = red ? 'rgba(120,20,18,0.5)' : 'rgba(150,120,70,0.5)'; g.lineWidth = 1; tri(); g.stroke();
-    g.fillStyle = red ? '#f0d27a' : '#c9a43c';
-    g.beginPath(); g.arc(x, tipY + (bottom ? 6 : -6), 2.2, 0, 7); g.fill();
+    const dark = ((c + (bottom ? 0 : 1)) % 2 === 0);
+    const tri = () => { g.beginPath(); g.moveTo(x - slotW*0.47, baseY); g.lineTo(x + slotW*0.47, baseY); g.lineTo(x, tipY); g.closePath(); };
+    g.fillStyle = dark ? '#8a8a8a' : '#e2e2e2';
+    tri(); g.fill();
+    g.strokeStyle = '#000'; g.lineWidth = 2; tri(); g.stroke();
   }
 
-  // 6) centre bar — warm wooden spine with medallions
-  paintWood(g, boardL + quadW, boardT, BAR, boardB - boardT, ['#a8763e', '#7a4e26', '#915f30']);
-  g.fillStyle = 'rgba(255,235,190,0.22)'; g.fillRect(boardL + quadW + BAR/2 - 1.5, boardT, 3, boardB - boardT);
-  const barCx = boardL + quadW + BAR/2;
-  drawRosette(g, barCx, boardT + 64, 15, '#f0d27a');
-  drawRosette(g, barCx, mid, 19, '#f7e2a0');
-  drawRosette(g, barCx, boardB - 64, 15, '#f0d27a');
-  goldBevel(g, boardL + quadW, boardT, BAR, boardB - boardT, 1.5);
+  // 4) centre bar — solid dark
+  g.fillStyle = '#3a3a3a'; g.fillRect(boardL + quadW, boardT, BAR, boardB - boardT);
 
-  // 7) bear-off tray — recessed warm wood
-  paintWood(g, trayL, boardT, trayR - trayL, boardB - boardT, ['#7a4e26', '#5a3618', '#6e4220']);
-  g.save(); g.shadowColor = 'rgba(0,0,0,0.6)'; g.shadowBlur = 10; g.strokeStyle = 'rgba(0,0,0,0.5)';
-  g.lineWidth = 6; g.strokeRect(trayL + 3, boardT + 3, trayR - trayL - 6, boardB - boardT - 6); g.restore();
+  // 5) bear-off tray — solid dark
+  g.fillStyle = '#2a2a2a'; g.fillRect(trayL, boardT, trayR - trayL, boardB - boardT);
 
-  // 8) framed gold rims (beveled) around playfield and tray
-  goldBevel(g, boardL, boardT, boardR - boardL, boardB - boardT, 3);
-  goldBevel(g, trayL, boardT, trayR - trayL, boardB - boardT, 2.5);
-
-  // 9) ornate gold corner medallions
-  [[boardL, boardT],[boardR, boardT],[boardL, boardB],[boardR, boardB]].forEach(([cx,cy]) => {
-    drawRosette(g, cx, cy, 11, '#f0d27a');
-    g.fillStyle = '#5b3618'; g.beginPath(); g.arc(cx, cy, 3, 0, 7); g.fill();
-  });
+  // 6) thick black outlines around the playfield, bar and tray
+  g.strokeStyle = '#000'; g.lineWidth = 5;
+  g.strokeRect(boardL, boardT, boardR - boardL, boardB - boardT);
+  g.strokeRect(boardL + quadW, boardT, BAR, boardB - boardT);
+  g.strokeRect(trayL, boardT, trayR - trayL, boardB - boardT);
   // (home labels are drawn per-frame in drawHomeLabels so they stay upright in both orientations)
 }
 
@@ -1577,10 +1527,10 @@ function buildBoard(){
 function drawCounters(){
   const cx = (trayL + trayR) / 2, mid = (boardT + boardB) / 2;
   const yB = boardT + (mid - boardT) * 0.5, yW = mid + (boardB - mid) * 0.5;
-  drawText(String(STATE.off.B), cx, yB, 'bold 30px Georgia', 'rgba(255,255,255,0.95)');
-  drawText(String(STATE.off.W), cx, yW, 'bold 30px Georgia', 'rgba(255,245,220,0.97)');
-  drawText('מתוך 15', cx, yB + 22, 'bold 13px Georgia', 'rgba(255,255,255,0.55)');
-  drawText('מתוך 15', cx, yW + 22, 'bold 13px Georgia', 'rgba(255,245,220,0.6)');
+  drawText(String(STATE.off.B), cx, yB, 'bold 32px Georgia', '#fff');
+  drawText(String(STATE.off.W), cx, yW, 'bold 32px Georgia', '#fff');
+  drawText('מתוך 15', cx, yB + 22, 'bold 13px Georgia', '#ccc');
+  drawText('מתוך 15', cx, yW + 22, 'bold 13px Georgia', '#ccc');
 }
 /* ---------- win confetti ---------- */
 let CONFETTI = [], confettiTimer = null;
@@ -1637,14 +1587,14 @@ function drawPointRing(p, color){
 function drawMovableGlow(p){
   const c = colForPoint(p), x = xForCol(c), bottom = isBottom(p);
   const cy = bottom ? boardB - R - 1 : boardT + R + 1;
-  ctx.strokeStyle = 'rgba(255,224,138,0.7)'; ctx.lineWidth = 3;
-  ctx.setLineDash([5, 5]);
-  ctx.beginPath(); ctx.arc(x, cy, R + 3, 0, 7); ctx.stroke();
+  ctx.strokeStyle = '#00a000'; ctx.lineWidth = 4;
+  ctx.setLineDash([6, 5]);
+  ctx.beginPath(); ctx.arc(x, cy, R + 4, 0, 7); ctx.stroke();
   ctx.setLineDash([]);
 }
 
 function drawStepLabel(x, y, step){
-  drawText(String(step), x, y, `bold ${Math.round(R * 0.95)}px Georgia`, '#0c3a1f');
+  drawText(String(step), x, y, `bold ${Math.round(R * 1.0)}px Georgia`, '#fff');
 }
 
 function drawDestMarker(p, step){
@@ -1654,9 +1604,9 @@ function drawDestMarker(p, step){
   const cap = (pt.trapped !== null ? 1 : 0) + (pt.trapped !== null ? 4 : 5);
   const n = (pt.top || pt.trapped) ? Math.min(topVisibleSlot(pt) + 1, cap) : 0;
   const cy = checkerY(bottom, n);
-  ctx.fillStyle = 'rgba(63,174,90,0.5)';
-  ctx.strokeStyle = '#3fae5a'; ctx.lineWidth = 4;
-  ctx.beginPath(); ctx.arc(x, cy, R - 1, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#00a000';
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(x, cy, R, 0, 7); ctx.fill(); ctx.stroke();
   drawStepLabel(x, cy, step);
 }
 
@@ -1689,56 +1639,34 @@ function drawStack(p){
   }
 }
 
-// a clear gold badge with a dark number, so the stack count pops on any colour
+// a bright yellow badge with bold black number — the count must be easy to read
 function drawCountBadge(x, y, n){
   ctx.save();
-  ctx.beginPath(); ctx.arc(x, y, R * 0.66, 0, 7);
-  ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 4;
-  ctx.fillStyle = '#f0c64b'; ctx.fill();
-  ctx.shadowBlur = 0; ctx.lineWidth = 2; ctx.strokeStyle = '#5b3618'; ctx.stroke();
+  ctx.beginPath(); ctx.arc(x, y, R * 0.7, 0, 7);
+  ctx.fillStyle = '#ffd400'; ctx.fill();
+  ctx.lineWidth = 3; ctx.strokeStyle = '#000'; ctx.stroke();
   ctx.restore();
-  drawText(String(n), x, y, `bold ${Math.round(R * 0.92)}px Georgia`, '#2a1a08');
+  drawText(String(n), x, y, `bold ${Math.round(R * 1.0)}px Georgia`, '#000');
 }
 
 function drawChecker(x, y, owner, r, locked){
   const white = owner === 'W';
-  // drop shadow
+  // high-contrast solid disc: pure white or pure black, with a THICK contrasting
+  // ring so each piece reads clearly against any background (weak-eyes friendly)
   ctx.save();
-  ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = 6; ctx.shadowOffsetX = 1.5; ctx.shadowOffsetY = 3;
-  ctx.fillStyle = '#000';
+  ctx.shadowColor = 'rgba(0,0,0,0.4)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 2;
+  ctx.fillStyle = white ? '#ffffff' : '#000000';
   ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
   ctx.restore();
-  // body with a 3D radial sheen
-  const grad = ctx.createRadialGradient(x - r*0.32, y - r*0.34, r*0.15, x, y, r*1.05);
-  if (white){ grad.addColorStop(0, '#fffef8'); grad.addColorStop(0.55, '#ecdcae'); grad.addColorStop(1, '#c2a86f'); }
-  else      { grad.addColorStop(0, '#6a6a6a'); grad.addColorStop(0.5, '#363636'); grad.addColorStop(1, '#0d0d0d'); }
-  ctx.fillStyle = grad;
-  ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
-  // beveled rim: bright top-left, dark bottom-right
-  ctx.lineWidth = 2;
-  ctx.strokeStyle = white ? 'rgba(255,255,255,0.7)' : 'rgba(150,150,150,0.5)';
-  ctx.beginPath(); ctx.arc(x, y, r - 1, Math.PI*1.1, Math.PI*1.9); ctx.stroke();
-  ctx.strokeStyle = white ? 'rgba(120,95,45,0.6)' : 'rgba(0,0,0,0.8)';
-  ctx.beginPath(); ctx.arc(x, y, r - 1, Math.PI*0.1, Math.PI*0.9); ctx.stroke();
-  // concave inner disc
-  const inner = ctx.createRadialGradient(x - r*0.2, y - r*0.2, r*0.1, x, y, r*0.66);
-  if (white){ inner.addColorStop(0, '#f3e6c0'); inner.addColorStop(1, '#d8c391'); }
-  else      { inner.addColorStop(0, '#2c2c2c'); inner.addColorStop(1, '#101010'); }
-  ctx.fillStyle = inner;
-  ctx.beginPath(); ctx.arc(x, y, r * 0.66, 0, 7); ctx.fill();
-  // Persian Khatam-style 8-pointed star inlay (gold)
-  const inlay = white ? '#a8772f' : '#e2bf5e';
-  ctx.strokeStyle = inlay; ctx.lineWidth = 1.3;
-  starPath(ctx, x, y, 8, r * 0.60, r * 0.28, 0);          ctx.stroke();
-  starPath(ctx, x, y, 8, r * 0.48, r * 0.22, Math.PI / 8); ctx.stroke();
-  ctx.fillStyle = inlay;
-  ctx.beginPath(); ctx.arc(x, y, r * 0.10, 0, 7); ctx.fill();
-  // glossy specular highlight
-  const hl = ctx.createRadialGradient(x - r*0.35, y - r*0.4, 0, x - r*0.35, y - r*0.4, r*0.7);
-  hl.addColorStop(0, 'rgba(255,255,255,' + (white ? 0.5 : 0.28) + ')'); hl.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.fillStyle = hl;
-  ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
-  if (locked){ drawText('🔒', x, y, `bold ${Math.round(r*0.9)}px serif`, '#ff6a4d'); }
+  // outer ring in the OPPOSITE colour (black on white, white on black)
+  ctx.lineWidth = Math.max(3, r * 0.22);
+  ctx.strokeStyle = white ? '#000000' : '#ffffff';
+  ctx.beginPath(); ctx.arc(x, y, r - ctx.lineWidth/2, 0, 7); ctx.stroke();
+  // a thin inner ring of the body colour to separate ring from a same-colour neighbour
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = white ? '#000000' : '#ffffff';
+  ctx.beginPath(); ctx.arc(x, y, r * 0.42, 0, 7); ctx.stroke();
+  if (locked){ drawText('🔒', x, y, `bold ${Math.round(r*0.95)}px serif`, '#e11'); }
 }
 
 function drawOffTray(){
@@ -1753,9 +1681,9 @@ function drawOffTray(){
     bar(cx, y, r, 'B');
   }
   function bar(cx, y, r, owner){
-    ctx.fillStyle = owner === 'W' ? '#e7d8ab' : '#222';
+    ctx.fillStyle = owner === 'W' ? '#ffffff' : '#000000';
     ctx.fillRect(cx - r, y - 5, r * 2, 6);
-    ctx.strokeStyle = owner === 'W' ? '#8d8266' : '#000'; ctx.lineWidth = 1;
+    ctx.strokeStyle = owner === 'W' ? '#000' : '#fff'; ctx.lineWidth = 1.5;
     ctx.strokeRect(cx - r, y - 5, r * 2, 6);
   }
 }
@@ -1766,7 +1694,7 @@ function drawDice(){
   else if (STATE.rolled && STATE.dicePool.length) pool = STATE.dicePool;
   else return;
 
-  const DS = 72, GAP = 16;                       // big, easy-to-read dice
+  const DS = 92, GAP = 20;                       // big, easy-to-read dice
   const n = pool.length;
   const totalW = n * DS + (n - 1) * GAP;
   const cx = (boardL + boardR) / 2;
@@ -1783,23 +1711,23 @@ function drawDice(){
     }
     ctx.fillStyle = 'rgba(0,0,0,0.35)';          // shadow
     roundRect(x + 3, y + 5, DS, DS, 12); ctx.fill();
-    ctx.fillStyle = d.used ? '#9a9a8f' : '#faf6ea';
-    roundRect(x, y, DS, DS, 12); ctx.fill();
-    ctx.strokeStyle = '#222'; ctx.lineWidth = 2.5; roundRect(x, y, DS, DS, 12); ctx.stroke();
+    ctx.fillStyle = d.used ? '#bdbdbd' : '#ffffff';
+    roundRect(x, y, DS, DS, 14); ctx.fill();
+    ctx.strokeStyle = '#000'; ctx.lineWidth = 4; roundRect(x, y, DS, DS, 14); ctx.stroke();
     drawPips(x, y, DS, d.v, d.used);
     ctx.restore();
   }
 }
 
 function drawPips(x, y, s, v, used){
-  ctx.fillStyle = used ? '#999' : '#1c1c1c';
+  ctx.fillStyle = used ? '#777' : '#000';
   const u = s / 4, c = [
     [], [[2,2]], [[1,1],[3,3]], [[1,1],[2,2],[3,3]],
     [[1,1],[3,1],[1,3],[3,3]], [[1,1],[3,1],[2,2],[1,3],[3,3]],
     [[1,1],[3,1],[1,2],[3,2],[1,3],[3,3]]
   ][v];
   for (const [a,b] of c){
-    ctx.beginPath(); ctx.arc(x + a*u, y + b*u, s*0.09, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(x + a*u, y + b*u, s*0.11, 0, 7); ctx.fill();
   }
 }
 
